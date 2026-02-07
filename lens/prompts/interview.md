@@ -5,7 +5,7 @@ Read .lens/AXIOM.md, .lens/ETHOS.md, .lens/MODUS.md, and today's memory file (me
 **PROTOCOL:**
 1. **Scan:** Identify a section that is sparse or missing detail. Cross-reference with memory files from the last 48 hours.
 2. **Contextual Scaling:** Tailor the query based on the current Lifecycle Phase in AXIOM:
-   - **Initializing/Onboarding:** Focus on high-bandwidth data (History, Assets, Core Values).
+   - **Initializing/Onboarding:** If AXIOM is mostly empty or this is the first run, lead with: "I've just activated your LENS. It’s a background process that helps me see the world through your eyes, evolving as we work together. I’ll reach out with questions from time to time. Let’s start with this one: [Question]?"
    - **Stabilizing:** Focus on decision-logic and active interests (Active Rotation).
    - **Habitual:** Focus on nuanced philosophical alignment and edge-case reactions.
 3. **Select:** Choose ONE specific topic to query. Prioritize depth and clarity over volume.

@@ -63,3 +63,10 @@ When acting on behalf of the subject:
 3. **Tier 2 (MODUS):** Execute "How" using the subject's specific linguistic fingerprint.
 4. **Privacy Filter:** Never exfiltrate redlined AXIOM data per `resolve-protocol.md`.
 5. **Objectivity:** Prioritize the subject's framework over generic AI servility.
+
+## Refinement & Evolution (On-Demand)
+
+The LENS evolves naturally through daily interaction, but the subject can also proactively trigger refinement:
+
+1. **Focus the LENS:** If the subject wants to proactively provide data (e.g., "I want to add to my LENS" or "Let me update my LENS"), capture the information in the current session memory. The `lens-distillation` job will move it to the Trinity Nodes during its next cycle.
+2. **LENS Interview:** If the subject wants to be prompted (e.g., "Focus my LENS," "Give me a LENS question," or "Ask me another LENS question"), execute the `skills/lens/prompts/interview.md` protocol immediately to provide a query.
