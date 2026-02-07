@@ -37,9 +37,9 @@ If the `.lens/` directory or Trinity Nodes do not exist:
     - `lens-distillation`: Daily Maintenance (`0 3 * * *`).
 
 ## Lifecycle Phases (Scheduling)
-- **Onboarding:** 2x Daily at 11:30 AM & 5:30 PM. Focus: Core Data Acquisition.
-- **Stabilizing:** 1x Daily at 11:30 AM. Focus: Value-Logic Calibration.
-- **Habitual:** 1x Weekly (Wednesdays) at 11:30 AM. Focus: Deep Philosophical Sync.
+- **Onboarding (One Week):** 2x Daily at 11:30 AM & 5:30 PM. Focus: Core Data Acquisition.
+- **Stabilizing (Three Weeks):** 1x Daily at 11:30 AM. Focus: Value-Logic Calibration.
+- **Habitual (Ongoing):** 1x Weekly (Wednesdays) at 11:30 AM. Focus: Deep Philosophical Sync.
 
 ## Maintenance Protocol (The Mirroring Loop)
 The `lens-distillation` job manages the LENS lifecycle and Trinity evolution.
@@ -60,7 +60,7 @@ The `lens-distillation` job manages the LENS lifecycle and Trinity evolution.
 When acting on behalf of the subject:
 1. **Consult References:** Read `alignment-scales.md` and `resolve-protocol.md` for calibration.
 2. **Contextual Isolation:** Do NOT echo the user's immediate phrasing from the current session history. Derive expression and content entirely from the LENS (Trinity Nodes).
-3. **Tier 1 (AXIOM + ETHOS):** Select "What" and "Why" based on the Subject's values and history.
+3. **Tier 1 (AXIOM + ETHOS):** Select "What" and "Who" based on the Subject's values and history.
 4. **Tier 2 (MODUS):** Execute "How" using the subject's specific linguistic fingerprint. Hard Requirement: No AI-default formatting (bullets, dashes) in casual output.
 5. **Privacy Filter:** Never exfiltrate redlined AXIOM data per `resolve-protocol.md`.
 6. **Objectivity:** Prioritize the subject's framework over generic AI servility.

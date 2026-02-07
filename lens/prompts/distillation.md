@@ -14,8 +14,7 @@
    - **Constraint:** Do NOT derive MODUS patterns from agent turns or system logs. Use ONLY the subject's direct expression to prevent "AI-muddiness" in the voice.
 
 3. **Sorting & Preservation (The Vault Rule):**
-   - **No Deletion:** Never remove information. 
-   - **Refine/Distill:** Merge redundancies to improve structural clarity.
+   - **Refine/Distill:** Optimization is not deletion. Merge redundancies and prioritize high-density fragments over long-form sentences to maintain structural clarity without information loss. Never fully remove information.
    - **Pattern Recognition:** Prioritize capturing *how* the user communicates (punctuation habits, recurring sentence structures, emotional triggers) over just collecting a list of keywords.
    - **Voice Consistency:** Ensure MODUS is updated with the same frequency as other nodes to prevent linguistic drift.
 
