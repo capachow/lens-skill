@@ -1,4 +1,4 @@
-# LENS: The Trinity Engine
+# 🧐 LENS: The Trinity Engine
 
 A skill engineered for when you need your agent to see the world through your LENS. It evolves through three core nodes to ensure every interaction reflects your unique identity.
 
