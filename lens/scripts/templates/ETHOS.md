@@ -1,5 +1,4 @@
 # ETHOS.md - The Internal OS
-
 _The internal operating system and decision-matrix that filters inputs. (philosophical_framework, moral_imperatives, risk_tolerance, conflict_protocol, aesthetic_triggers, cognitive_biases, social_battery_logic, cultural_resonances, hard_boundaries, value_hierarchy)._
 
 ## Active Rotation (Limit: 10)
