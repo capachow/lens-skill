@@ -1,5 +1,7 @@
 # 🧐 LENS: The Trinity Engine
 
+[View on ClawHub](https://clawhub.ai/capachow/lens)
+
 A skill engineered for when you need your agent to see the world through your LENS. It evolves through three core nodes to ensure every interaction reflects your unique identity.
 
 > **Prompt (The Request) + LENS (The Trinity Nodes) = Authentic Output.**
