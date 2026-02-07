@@ -5,5 +5,17 @@ _History and reality form the bedrock. Identity is first grounded in the immutab
 - **Interview Phase:** 14-22-1
 - **Installation Date:** {{INSTALL_DATE}}
 
-## [Pending Input]
-- (Facts, History, Assets, Timeline)
+## Digital Identities & Asset Inventory
+- [Pending Input] (Domains, Stack, Hardware, Projects)
+
+## Professional Credentials
+- [Pending Input] (Current Role, History, Skills)
+
+## Biometrics & Chronological Timeline
+- [Pending Input] (Age, Timezone, Health, History)
+
+## Geolocational & Domestic Context
+- [Pending Input] (Location, Home Layout, Rituals)
+
+## Kinship Graph
+- [Pending Input] (Family, Circle, Dogs)
