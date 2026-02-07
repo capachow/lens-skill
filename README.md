@@ -22,12 +22,12 @@ Complexity is mapped into three distinct nodes. These anchors define the subject
 > Chronology, Kinship, Latency & Velocity (thinking speed), Data Heritage, Asset Weight.
 
 ### 2. `ETHOS.md`: The Nature (Who)
-**Values and character form the Internal Compass.** Beyond facts, identity is defined by how the world is weighed.
+**Values and character form the Internal Compass.** Identity is structured by the hierarchy of values.
 
 > Decision-Logic, Candor & Friction, Chaos Tolerance, Identity Loyalty, Prioritization Hierarchy.
 
 ### 3. `MODUS.md`: The Voice (How)
-**Style and expression form the Behavioral Interface.** History and values are lost if the delivery is incorrect.
+**Style and expression form the Behavioral Interface.** Identity is rendered through the nuance of delivery.
 
 > Cadence Velocity, Punctuation Density (Rhythm), Lexical Gravity, Tone Temperature.
 
