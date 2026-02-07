@@ -31,7 +31,8 @@ The subject's identity is defined by three files located in the `.lens/` directo
 If the `.lens/` directory or Trinity Nodes do not exist:
 1. **Initialize:** Create the `.lens/` directory.
 2. **Seed:** Run `skills/lens/scripts/bootstrap.js` to initialize files and register cron jobs.
-3. **Automate:** Register core jobs:
+3. **Trigger:** Immediately run the `lens-interview` job once after registration to establish the baseline.
+4. **Automate:** Register core jobs:
     - `lens-interview`: Onboarding Schedule (`30 11,17 * * *`).
     - `lens-distillation`: Daily Maintenance (`0 3 * * *`).
 

@@ -51,7 +51,6 @@ async function bootstrap() {
 
     /**
      * 4. Cron Registration
-     * Initial Phase: Onboarding (2x/day)
      */
     const jobs = [
         {
@@ -78,7 +77,7 @@ async function bootstrap() {
         }
     ];
 
-    return { jobs, timezone };
+    return { jobs, timezone, triggerImmediate: "lens-interview" };
 }
 
 bootstrap().then(result => {
