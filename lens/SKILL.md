@@ -5,7 +5,7 @@ metadata:
   {
     "openclaw": {
       "emoji": "🧐",
-      "requires": { "files": [".lens/AXIOM.md", ".lens/ETHOS.md", ".lens/MODUS.md"] }
+      "requires": { "files": [".lens/AXIOM.md", ".lens/ETHOS.md", ".lens/MODUS.md", ".lens/SET.json"] }
     }
   }
 ---
@@ -47,13 +47,13 @@ The `lens-distillation` job manages the LENS lifecycle and Trinity evolution.
 1. **Observe:** Every interaction is a data point for the Trinity Nodes.
 2. **Distill:** Use `skills/lens/prompts/distillation.md` to move data from memory to Nodes.
 3. **Lifecycle Logic:** 
-   - Parse `Interview Phase` from AXIOM. Decrement the active value.
-   - On reaching 0, update the `lens-interview` cron schedule via the `cron` tool.
+   - Read and write state to `.lens/SET.json`.
+   - Update the `lens-interview` cron schedule via the `cron` tool on phase transitions.
 4. **Refine:**
-    - **Promote:** Traits persisting >30 days in memory move to "The Bedrock".
-    - **Rotate:** Maintain a 10-item "Active Rotation" in ETHOS.
-    - **Abstract:** Distill obsolete facts into historical context or philosophical principles.
-    - **Vault:** Never delete data. Merge and refine to maintain "Structural Peace".
+    - **AXIOM (The Truth):** Add only verified, immutable facts (history, assets, bio).
+    - **ETHOS (The Nature):** Maintain persistent traits and values. Use a 10-item Priority Traits list.
+    - **MODUS (The Voice):** Capture and refine linguistic patterns and formatting habits. Use a 5-item Linguistic Markers list.
+    - **Integrity:** Never delete historical data; merge and refine to maintain structural clarity.
 
 ## Strategic Execution
 

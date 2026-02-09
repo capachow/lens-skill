@@ -2,7 +2,6 @@
 _History and reality form the bedrock. Identity is first grounded in the immutable facts of existence. (biometrics, phenotype, circadian_rhythm, geolocational_context, kinship_graph, digital_identities, professional_credentials, asset_inventory, hardware_specifications, medical_constraints, chronological_timeline, geographic_history, latency_velocity, data_heritage, asset_weight, grounding)._
 
 ## LENS Lifecycle
-- **Interview Phase:** 14-22-1
 - **Installation Date:** {{INSTALL_DATE}}
 
 ## Digital Identities & Asset Inventory
