@@ -30,7 +30,7 @@ async function bootstrap() {
             model: ""
         },
         distillation: {
-            model: "gemini-pro-preview"
+            model: ""
         }
     };
 
@@ -94,8 +94,7 @@ async function bootstrap() {
             schedule: { kind: "cron", expr: "0 3 * * *", tz: timezone },
             payload: {
                 kind: "agentTurn",
-                message: "Read skills/lens/prompts/distillation.md and follow it.",
-                model: settings.distillation.model || "gemini-pro-preview"
+                message: "Read skills/lens/prompts/distillation.md and follow it."
             }
         },
         {
@@ -110,6 +109,9 @@ async function bootstrap() {
         }
     ];
 
+    if (settings.distillation.model) {
+        jobs[0].payload.model = settings.distillation.model;
+    }
     if (settings.interview.model) {
         jobs[1].payload.model = settings.interview.model;
     }
