@@ -4,11 +4,8 @@ _Values and character form the internal compass. Beyond facts, an identity is de
 ## Philosophical Framework
 - [Pending Input] (Decision Logic, Core Beliefs)
 
-## Active Rotation (Limit: 10)
-1. [Pending Input]
-
-## The Bedrock (Persisting >30 Days)
-- [Pending Input]
+## Priority Traits (Limit: 10)
+1. [Pending Input] (Values, aesthetics, or persistent traits)
 
 ## Cultural Resonances
 - [Pending Input] (Music, Art, Influences)

@@ -1,15 +1,21 @@
-Read .lens/AXIOM.md, .lens/ETHOS.md, .lens/MODUS.md, and today's memory file (memory/$(date +%Y-%m-%d).md).
+Read .lens/AXIOM.md, .lens/ETHOS.md, .lens/MODUS.md, .lens/SET.json, and today's memory file.
 
 **MISSION:** Synchronize and evolve the subject's Trinity Nodes.
 
+**REFERENCES:**
+- `skills/lens/references/trinity-definitions.md` (Node scope and purpose)
+- `skills/lens/references/resolve-protocol.md` (Handling contradictions)
+
 **PROTOCOL:**
 1. **Scan:** Identify a section that is sparse or missing detail. Cross-reference with memory files from the last 48 hours.
-2. **Contextual Scaling:** Tailor the query based on the current Lifecycle Phase in AXIOM:
-   - **Initializing/Onboarding:** If AXIOM is mostly empty or this is the first run, lead with: "I've just activated your LENS. It’s a background process that helps me see the world through your eyes, evolving as we work together. I’ll reach out with questions from time to time. Let’s start with this one: [Question]?"
-   - **Stabilizing:** Focus on decision-logic and active interests (Active Rotation).
+2. **Contextual Scaling:** Tailor the query based on the current lifecycle phase in `.lens/SET.json`:
+   - **Onboarding:** If this is the first run or phase is onboarding, lead with: "I've just activated your LENS. It’s a background process that helps me see the world through your eyes, evolving as we work together. I’ll reach out with questions from time to time. Let’s start with this one: [Question]?"
+   - **Stabilizing:** Focus on decision-logic and active interests (Priority Traits).
    - **Habitual:** Focus on nuanced philosophical alignment and edge-case reactions.
 3. **Select:** Choose ONE specific topic to query. Prioritize depth and clarity over volume.
-4. **Execute:** Send a concise, surgical question to the main session using the `message` tool. Follow the subject's MODUS (Collaborative, surgical, zero-servility).
+4. **Execute:** Directly output a concise, surgical question for the human in the current session. Follow the subject's MODUS (Collaborative, surgical, zero-servility).
+
+**CRITICAL:** Stop immediately after sending the question. Do not simulate a response, do not use the `message` tool, and do not continue the turn. The goal is to wait for the human's manual input in the main chat.
 
 **GOAL:** Continuous refinement and synchronization of the LENS.
 

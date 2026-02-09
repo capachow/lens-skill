@@ -1,23 +1,14 @@
 import fs from 'fs';
 import path from 'path';
 
-/**
- * LENS Bootstrap Logic
- * 1. Verifies/Creates .lens structure
- * 2. Pulls timezone context from USER.md (Default: UTC)
- * 3. Registers core LENS cron jobs for Distillation and Interviewing
- */
-
 async function bootstrap() {
-    console.log("💎 LENS: Initializing universal identity engine...");
+    console.log("🧐 LENS: Initializing universal identity engine...");
 
-    // 1. Structure Verification
     const lensDir = path.join(process.cwd(), '.lens');
     if (!fs.existsSync(lensDir)) {
         fs.mkdirSync(lensDir);
     }
 
-    // 2. Context Extraction (Timezone)
     let timezone = 'UTC';
     try {
         const userContent = fs.readFileSync(path.join(process.cwd(), 'USER.md'), 'utf8');
@@ -27,13 +18,60 @@ async function bootstrap() {
         }
     } catch (e) {}
 
-    // 3. Trinity Initialization
-    const installDate = new Date().toISOString().split('T')[0];
-    const templatesDir = path.join(process.cwd(), 'skills/lens/scripts/templates');
-
+    const setPath = path.join(lensDir, 'SET.json');
     const axiomPath = path.join(lensDir, 'AXIOM.md');
     const ethosPath = path.join(lensDir, 'ETHOS.md');
     const modusPath = path.join(lensDir, 'MODUS.md');
+
+    let settings = {
+        interview: {
+            phase: "onboarding",
+            questions: 7,
+            model: ""
+        },
+        distillation: {
+            model: "gemini-pro-preview"
+        }
+    };
+
+    if (fs.existsSync(setPath)) {
+        try {
+            const existingSettings = JSON.parse(fs.readFileSync(setPath, 'utf8'));
+            settings.interview = { ...settings.interview, ...(existingSettings.interview || {}) };
+            settings.distillation = { ...settings.distillation, ...(existingSettings.distillation || {}) };
+        } catch (e) {
+            console.error("🧐 LENS: Failed to parse SET.json, using defaults.");
+        }
+    } else {
+        if (fs.existsSync(axiomPath)) {
+            try {
+                const axiomContent = fs.readFileSync(axiomPath, 'utf8');
+                const phaseMatch = axiomContent.match(/Interview Phase: (\d+)-(\d+)-(\d+)/);
+                if (phaseMatch) {
+                    const [_, init, stab, hab] = phaseMatch.map(Number);
+                    if (init > 0) {
+                        settings.interview.phase = "onboarding";
+                        settings.interview.questions = init;
+                    } else if (stab > 0) {
+                        settings.interview.phase = "stabilizing";
+                        settings.interview.questions = stab;
+                    } else {
+                        settings.interview.phase = "habitual";
+                        settings.interview.questions = true;
+                    }
+                    const cleanedAxiom = axiomContent.replace(/^- Interview Phase: \d+-\d+-\d+\n/m, '');
+                    fs.writeFileSync(axiomPath, cleanedAxiom);
+                    console.log("🧐 LENS: Migrated phase data from AXIOM.md to SET.json");
+                }
+            } catch (e) {
+                console.error("🧐 LENS: Migration failed, using defaults.");
+            }
+        }
+        fs.writeFileSync(setPath, JSON.stringify(settings, null, 2));
+    }
+
+    const installDate = new Date().toISOString().split('T')[0];
+    const templatesDir = path.join(process.cwd(), 'skills/lens/scripts/templates');
 
     const nodes = [
         { name: 'AXIOM.md', path: axiomPath },
@@ -49,9 +87,6 @@ async function bootstrap() {
         }
     });
 
-    /**
-     * 4. Cron Registration
-     */
     const jobs = [
         {
             id: "lens-distillation",
@@ -60,22 +95,24 @@ async function bootstrap() {
             payload: {
                 kind: "agentTurn",
                 message: "Read skills/lens/prompts/distillation.md and follow it.",
-                model: "gemini-3-pro-preview"
+                model: settings.distillation.model || "gemini-pro-preview"
             }
         },
         {
             id: "lens-interview",
             name: "lens-interview",
             schedule: { kind: "cron", expr: "30 11,17 * * *", tz: timezone },
+            sessionTarget: "main",
             payload: {
-                kind: "agentTurn",
-                message: "Read skills/lens/prompts/interview.md and follow it.",
-                model: "gemini-3-flash-preview",
-                deliver: true,
-                to: "main"
+                kind: "systemEvent",
+                text: "Read skills/lens/prompts/interview.md and follow it strictly. Generate a single question for the human and stop."
             }
         }
     ];
+
+    if (settings.interview.model) {
+        jobs[1].payload.model = settings.interview.model;
+    }
 
     return { jobs, timezone, triggerImmediate: "lens-interview" };
 }
