@@ -2,20 +2,14 @@ import fs from 'fs';
 import path from 'path';
 
 async function bootstrap() {
-    console.log("🧐 LENS: Initializing universal identity engine...");
-
     const lensDir = path.join(process.cwd(), '.lens');
-    if (!fs.existsSync(lensDir)) {
-        fs.mkdirSync(lensDir);
-    }
+    if (!fs.existsSync(lensDir)) fs.mkdirSync(lensDir);
 
     let timezone = 'UTC';
     try {
         const userContent = fs.readFileSync(path.join(process.cwd(), 'USER.md'), 'utf8');
         const tzMatch = userContent.match(/Timezone:.*?\((.*?)\)/);
-        if (tzMatch && tzMatch[1]) {
-            timezone = tzMatch[1].trim();
-        }
+        if (tzMatch && tzMatch[1]) timezone = tzMatch[1].trim();
     } catch (e) {}
 
     const setPath = path.join(lensDir, 'SET.json');
@@ -24,66 +18,65 @@ async function bootstrap() {
     const modusPath = path.join(lensDir, 'MODUS.md');
 
     let settings = {
-        interview: {
-            phase: "onboarding",
-            questions: 7,
-            model: ""
-        },
-        distillation: {
-            model: ""
-        }
+        meta: { installed: new Date().toISOString().split('T')[0] },
+        interview: { phase: "onboarding", questions: 7, model: "" },
+        distillation: { model: "" }
     };
 
     if (fs.existsSync(setPath)) {
         try {
-            const existingSettings = JSON.parse(fs.readFileSync(setPath, 'utf8'));
-            settings.interview = { ...settings.interview, ...(existingSettings.interview || {}) };
-            settings.distillation = { ...settings.distillation, ...(existingSettings.distillation || {}) };
-        } catch (e) {
-            console.error("🧐 LENS: Failed to parse SET.json, using defaults.");
-        }
-    } else {
-        if (fs.existsSync(axiomPath)) {
-            try {
-                const axiomContent = fs.readFileSync(axiomPath, 'utf8');
-                const phaseMatch = axiomContent.match(/Interview Phase: (\d+)-(\d+)-(\d+)/);
-                if (phaseMatch) {
-                    const [_, init, stab, hab] = phaseMatch.map(Number);
-                    if (init > 0) {
-                        settings.interview.phase = "onboarding";
-                        settings.interview.questions = init;
-                    } else if (stab > 0) {
-                        settings.interview.phase = "stabilizing";
-                        settings.interview.questions = stab;
-                    } else {
-                        settings.interview.phase = "habitual";
-                        settings.interview.questions = true;
-                    }
-                    const cleanedAxiom = axiomContent.replace(/^- Interview Phase: \d+-\d+-\d+\n/m, '');
-                    fs.writeFileSync(axiomPath, cleanedAxiom);
-                    console.log("🧐 LENS: Migrated phase data from AXIOM.md to SET.json");
-                }
-            } catch (e) {
-                console.error("🧐 LENS: Migration failed, using defaults.");
-            }
-        }
-        fs.writeFileSync(setPath, JSON.stringify(settings, null, 2));
+            const existing = JSON.parse(fs.readFileSync(setPath, 'utf8'));
+            settings.meta = { ...settings.meta, ...(existing.meta || {}) };
+            settings.interview = { ...settings.interview, ...(existing.interview || {}) };
+            settings.distillation = { ...settings.distillation, ...(existing.distillation || {}) };
+        } catch (e) {}
     }
 
-    const installDate = new Date().toISOString().split('T')[0];
-    const templatesDir = path.join(process.cwd(), 'skills/lens/scripts/templates');
+    if (fs.existsSync(axiomPath)) {
+        const axiom = fs.readFileSync(axiomPath, 'utf8');
+        let changed = false;
 
-    const nodes = [
+        if (axiom.includes('Interview Phase:')) {
+            const phaseMatch = axiom.match(/Interview Phase: (\d+)-(\d+)-(\d+)/);
+            if (phaseMatch) {
+                const [_, init, stab, hab] = phaseMatch.map(Number);
+                if (init > 0) {
+                    settings.interview.phase = "onboarding";
+                    settings.interview.questions = init;
+                } else if (stab > 0) {
+                    settings.interview.phase = "stabilizing";
+                    settings.interview.questions = stab;
+                } else {
+                    settings.interview.phase = "habitual";
+                    settings.interview.questions = true;
+                }
+                changed = true;
+            }
+        }
+
+        if ((!settings.meta.installed || settings.meta.installed.includes('Z')) && axiom.includes('Installation Date:')) {
+            const dateMatch = axiom.match(/Installation Date: (\d{4}-\d{2}-\d{2})/);
+            if (dateMatch) {
+                settings.meta.installed = dateMatch[1];
+                changed = true;
+            }
+        }
+
+        if (changed || axiom.includes('## LENS Lifecycle')) {
+            const cleaned = axiom.replace(/## LENS Lifecycle\n(- (Interview Phase: \d+-\d+-\d+|Installation Date: \d{4}-\d{2}-\d{2})\n?)+/gm, '').replace(/\n\n\n+/g, '\n\n');
+            fs.writeFileSync(axiomPath, cleaned.trim() + '\n');
+        }
+    }
+    fs.writeFileSync(setPath, JSON.stringify(settings, null, 2));
+
+    const templatesDir = path.join(process.cwd(), 'skills/lens/scripts/templates');
+    [
         { name: 'AXIOM.md', path: axiomPath },
         { name: 'ETHOS.md', path: ethosPath },
         { name: 'MODUS.md', path: modusPath }
-    ];
-
-    nodes.forEach(node => {
+    ].forEach(node => {
         if (!fs.existsSync(node.path)) {
-            let content = fs.readFileSync(path.join(templatesDir, node.name), 'utf8');
-            content = content.replace('{{INSTALL_DATE}}', installDate);
-            fs.writeFileSync(node.path, content);
+            fs.writeFileSync(node.path, fs.readFileSync(path.join(templatesDir, node.name), 'utf8'));
         }
     });
 
@@ -94,7 +87,8 @@ async function bootstrap() {
             schedule: { kind: "cron", expr: "0 3 * * *", tz: timezone },
             payload: {
                 kind: "agentTurn",
-                message: "Read skills/lens/prompts/distillation.md and follow it."
+                message: "Read skills/lens/prompts/distillation.md and follow it.",
+                model: settings.distillation.model || undefined
             }
         },
         {
@@ -104,17 +98,11 @@ async function bootstrap() {
             sessionTarget: "main",
             payload: {
                 kind: "systemEvent",
-                text: "Read skills/lens/prompts/interview.md and follow it strictly. Generate a single question for the human and stop."
+                text: "Read skills/lens/prompts/interview.md and follow it strictly. Generate a single question for the human and stop.",
+                model: settings.interview.model || undefined
             }
         }
     ];
-
-    if (settings.distillation.model) {
-        jobs[0].payload.model = settings.distillation.model;
-    }
-    if (settings.interview.model) {
-        jobs[1].payload.model = settings.interview.model;
-    }
 
     return { jobs, timezone, triggerImmediate: "lens-interview" };
 }

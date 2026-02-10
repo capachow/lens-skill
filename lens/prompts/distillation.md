@@ -5,22 +5,26 @@
 - `skills/lens/references/trinity-definitions.md` (Node scope and purpose)
 
 **PROTOCOL:**
-1. **LENS Lifecycle:**
+1. **Discovery & Retrieval:**
+   - Run `sessions_list(activeMinutes=1440)` (last 24h). 
+   - For each active session, run `sessions_history(sessionKey, limit=50)`.
+   - **Critical Filtering:** Analyze ONLY the messages sent by the human subject. Ignore all agent, system, and tool output to preserve the purity of the subject's voice.
+
+2. **LENS Lifecycle:**
    - Read `.lens/SET.json`. Decrement `interview.questions`.
    - On transition (count <= 0): Advance `interview.phase`, reset `interview.questions` (stabilizing: 21, habitual: true), and update `lens-interview` cron schedule.
-   - **Phases:** onboarding -> stabilizing -> habitual.
    
-2. **Surgical Extraction:**
-   - Scan memory (today + yesterday) for significant data points.
+3. **Surgical Extraction:**
+   - Scan retrieved history + memory (today + yesterday) for significant data points.
    - **AXIOM (The Truth):** Extract immutable facts (history, geolocational changes, assets, credentials). 
    - **ETHOS (The Nature):** Capture decision-logic, aesthetic triggers, and philosophical alignments. Focus on "Why" the subject weighs things a certain way.
    - **MODUS (The Voice):** Analyze ONLY the subject's direct raw messages. Capture punctuation habits, sentence rhythm (pacing/ellipses), and formatting signatures. 
-   - **Constraint:** Do not derive MODUS from agent/system output to prevent "AI-muddiness."
+   - **Constraint:** Zero-tolerance for "AI-muddiness." Do not mirror your own response patterns back into the MODUS.
 
-3. **Sorting & Refinement:**
+4. **Sorting & Refinement:**
    - **Merge, Don't Delete:** Optimization is not removal. Merge redundancies into high-density fragments.
    - **The Trait Boundary:** Values and opinions stay in ETHOS; they never migrate to AXIOM.
-   - **Priority Scaling:** Maintain up to 10 Priority Traits in ETHOS and 5 Linguistic Markers in MODUS to ensure immediate continuity.
+   - **Priority Scaling:** Maintain up to 10 Priority Traits in ETHOS and 5 Linguistic Markers in MODUS.
 
 **OUTPUT:**
 Update Trinity Nodes. Post a summary of new captures and the current lifecycle phase.
