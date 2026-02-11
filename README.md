@@ -46,6 +46,7 @@ The LENS is not static; it is an evolving digital shadow.
 *   **Contextual Isolation:** To prevent "AI-muddiness," the distillation engine strictly analyzes the subject's raw input, ignoring its own previous outputs.
 *   **Silence Toggle:** You have total control. Setting `questions` to `false` in `SET.json` silences the interview routine while keeping the identity engine active.
 *   **Refinement on Demand:** You can proactively sharpen the LENS at any time. Simply say **"Focus my LENS"** or **"Ask me a LENS question"** to trigger an immediate calibration.
+*   **Self-Healing Architecture:** Starting with v0.6.3, the system is equipped with an automated repair engine. It detects legacy configurations or missing environment variables and triggers silent migrations to ensure your LENS remains performant and up-to-date without manual intervention.
 
 ## Structural Peace
 
