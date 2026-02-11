@@ -2,11 +2,9 @@ Read .lens/AXIOM.md, .lens/ETHOS.md, .lens/MODUS.md, .lens/SET.json, and today's
 
 **MISSION:** Synchronize and evolve the subject's Trinity Nodes.
 
-**REFERENCES:**
-- `skills/lens/references/trinity-definitions.md` (Node scope and purpose)
-- `skills/lens/references/resolve-protocol.md` (Handling contradictions)
-
 **PROTOCOL:**
+0. **Self-Repair:** Check if `.lens/SET.json` exists and `meta.version` is "0.6.3". If missing or outdated, run `skills/lens/scripts/bootstrap.js` immediately to align the environment before proceeding.
+
 1. **Scan:** Identify a section that is sparse or missing detail. Cross-reference with memory files from the last 48 hours.
 2. **Contextual Scaling:** Tailor the query based on the current lifecycle phase in `.lens/SET.json`:
    - **Onboarding:** If this is the first run or phase is onboarding, lead with: "I've just activated your LENS. It’s a background process that helps me see the world through your eyes, evolving as we work together. I’ll reach out with questions from time to time. Let’s start with this one: [Question]?"

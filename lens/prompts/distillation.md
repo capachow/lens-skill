@@ -5,6 +5,8 @@
 - `skills/lens/references/trinity-definitions.md` (Node scope and purpose)
 
 **PROTOCOL:**
+0. **Self-Repair:** Check if `.lens/SET.json` exists and `meta.version` is "0.6.3". If missing or outdated, run `skills/lens/scripts/bootstrap.js` immediately to align the environment before proceeding.
+
 1. **Discovery & Retrieval:**
    - Scan memory files (today + yesterday) in the `memory/` directory.
    - **Critical Filtering:** Analyze ONLY the messages sent by the human subject. Ignore all assistant, system, and tool output to preserve the purity of the subject's voice.

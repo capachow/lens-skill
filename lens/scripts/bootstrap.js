@@ -1,37 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-async function bootstrap() {
-    const lensDir = path.join(process.cwd(), '.lens');
-    if (!fs.existsSync(lensDir)) fs.mkdirSync(lensDir);
-
-    let timezone = 'UTC';
-    try {
-        const userContent = fs.readFileSync(path.join(process.cwd(), 'USER.md'), 'utf8');
-        const tzMatch = userContent.match(/Timezone:.*?\((.*?)\)/);
-        if (tzMatch && tzMatch[1]) timezone = tzMatch[1].trim();
-    } catch (e) {}
-
-    const setPath = path.join(lensDir, 'SET.json');
-    const axiomPath = path.join(lensDir, 'AXIOM.md');
-    const ethosPath = path.join(lensDir, 'ETHOS.md');
-    const modusPath = path.join(lensDir, 'MODUS.md');
-
-    let settings = {
-        meta: { installed: new Date().toISOString().split('T')[0] },
-        interview: { phase: "onboarding", questions: 7, model: "" },
-        distillation: { model: "" }
-    };
-
-    if (fs.existsSync(setPath)) {
-        try {
-            const existing = JSON.parse(fs.readFileSync(setPath, 'utf8'));
-            settings.meta = { ...settings.meta, ...(existing.meta || {}) };
-            settings.interview = { ...settings.interview, ...(existing.interview || {}) };
-            settings.distillation = { ...settings.distillation, ...(existing.distillation || {}) };
-        } catch (e) {}
-    }
-
+async function runMigrations(axiomPath, settings, jobs) {
     if (fs.existsSync(axiomPath)) {
         const axiom = fs.readFileSync(axiomPath, 'utf8');
         let changed = false;
@@ -67,28 +37,68 @@ async function bootstrap() {
             fs.writeFileSync(axiomPath, cleaned.trim() + '\n');
         }
     }
-    fs.writeFileSync(setPath, JSON.stringify(settings, null, 2));
 
-    const templatesDir = path.join(process.cwd(), 'skills/lens/scripts/templates');
-    [
-        { name: 'AXIOM.md', path: axiomPath },
-        { name: 'ETHOS.md', path: ethosPath },
-        { name: 'MODUS.md', path: modusPath }
-    ].forEach(node => {
-        if (!fs.existsSync(node.path)) {
-            fs.writeFileSync(node.path, fs.readFileSync(path.join(templatesDir, node.name), 'utf8'));
-        }
-    });
+    if (typeof process.env.OPENCLAW_CRON_LIST === 'string') {
+        try {
+            const cronList = JSON.parse(process.env.OPENCLAW_CRON_LIST);
+            jobs.forEach(job => {
+                const existing = cronList.find(j => j.name === job.name);
+                if (existing) {
+                    job.jobId = existing.id;
+                }
+            });
+        } catch (e) {}
+    }
+}
+
+async function bootstrap() {
+    const lensDir = path.join(process.cwd(), '.lens');
+    if (!fs.existsSync(lensDir)) fs.mkdirSync(lensDir);
+
+    let timezone = 'UTC';
+    try {
+        const userContent = fs.readFileSync(path.join(process.cwd(), 'USER.md'), 'utf8');
+        const tzMatch = userContent.match(/Timezone:.*?\((.*?)\)/);
+        if (tzMatch && tzMatch[1]) timezone = tzMatch[1].trim();
+    } catch (e) {}
+
+    const setPath = path.join(lensDir, 'SET.json');
+    const axiomPath = path.join(lensDir, 'AXIOM.md');
+    const ethosPath = path.join(lensDir, 'ETHOS.md');
+    const modusPath = path.join(lensDir, 'MODUS.md');
+
+    let settings = {
+        meta: { 
+            version: "0.6.3",
+            installed: new Date().toISOString().split('T')[0] 
+        },
+        interview: { phase: "onboarding", questions: 7, model: "" },
+        distillation: { model: "" }
+    };
+
+    if (fs.existsSync(setPath)) {
+        try {
+            const existing = JSON.parse(fs.readFileSync(setPath, 'utf8'));
+            settings.meta = { ...settings.meta, ...(existing.meta || {}) };
+            settings.interview = { ...settings.interview, ...(existing.interview || {}) };
+            settings.distillation = { ...settings.distillation, ...(existing.distillation || {}) };
+            settings.meta.version = "0.6.3";
+        } catch (e) {}
+    }
 
     const jobs = [
         {
             id: "lens-distillation",
             name: "lens-distillation",
             schedule: { kind: "cron", expr: "0 3 * * *", tz: timezone },
+            sessionTarget: "isolated",
             payload: {
                 kind: "agentTurn",
                 message: "Read skills/lens/prompts/distillation.md and follow it.",
                 model: settings.distillation.model || undefined
+            },
+            delivery: {
+                mode: "none"
             }
         },
         {
@@ -103,6 +113,21 @@ async function bootstrap() {
             }
         }
     ];
+
+    await runMigrations(axiomPath, settings, jobs);
+
+    fs.writeFileSync(setPath, JSON.stringify(settings, null, 2));
+
+    const templatesDir = path.join(process.cwd(), 'skills/lens/scripts/templates');
+    [
+        { name: 'AXIOM.md', path: axiomPath },
+        { name: 'ETHOS.md', path: ethosPath },
+        { name: 'MODUS.md', path: modusPath }
+    ].forEach(node => {
+        if (!fs.existsSync(node.path)) {
+            fs.writeFileSync(node.path, fs.readFileSync(path.join(templatesDir, node.name), 'utf8'));
+        }
+    });
 
     return { jobs, timezone, triggerImmediate: "lens-interview" };
 }
