@@ -44,8 +44,8 @@ If the `.lens/` directory or Trinity Nodes do not exist:
 ## Maintenance Protocol (The Mirroring Loop)
 The `lens-distillation` job manages the LENS lifecycle and Trinity evolution.
 
-1. **Observe:** Run `sessions_list(activeMinutes=1440)` to find active sessions from the last 24 hours and pull raw history via `sessions_history`.
-2. **Distill:** Use `skills/lens/prompts/distillation.md` to move data from memory and raw chat logs to Nodes.
+1. **Observe:** Read the latest `memory/YYYY-MM-DD.md` files (today + yesterday) from the workspace.
+2. **Distill:** Use `skills/lens/prompts/distillation.md` to move data from memory files to Nodes. Focus exclusively on the subject's direct messages and decisions.
 3. **Lifecycle Logic:** 
    - Read and write state to `.lens/SET.json`.
    - Update the `lens-interview` cron schedule via the `cron` tool on phase transitions.

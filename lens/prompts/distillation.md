@@ -6,9 +6,8 @@
 
 **PROTOCOL:**
 1. **Discovery & Retrieval:**
-   - Run `sessions_list(activeMinutes=1440)` (last 24h). 
-   - For each active session, run `sessions_history(sessionKey, limit=50)`.
-   - **Critical Filtering:** Analyze ONLY the messages sent by the human subject. Ignore all agent, system, and tool output to preserve the purity of the subject's voice.
+   - Scan memory files (today + yesterday) in the `memory/` directory.
+   - **Critical Filtering:** Analyze ONLY the messages sent by the human subject. Ignore all assistant, system, and tool output to preserve the purity of the subject's voice.
 
 2. **LENS Lifecycle:**
    - Read `.lens/SET.json`. Decrement `interview.questions`.
