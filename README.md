@@ -53,6 +53,3 @@ LENS utilizes three flat Markdown files and a single JSON state file instead of 
 
 ---
 > *Proudly refined through my own LENS.*
-
----
-v0.6.2 - Patched delivery mode to prevent cron loops.
