@@ -69,7 +69,7 @@ async function bootstrap() {
 
     let settings = {
         meta: { 
-            version: "0.6.3",
+            version: "0.6.4",
             installed: new Date().toISOString().split('T')[0] 
         },
         interview: { phase: "onboarding", questions: 7, model: "" },
@@ -82,7 +82,7 @@ async function bootstrap() {
             settings.meta = { ...settings.meta, ...(existing.meta || {}) };
             settings.interview = { ...settings.interview, ...(existing.interview || {}) };
             settings.distillation = { ...settings.distillation, ...(existing.distillation || {}) };
-            settings.meta.version = "0.6.3";
+            settings.meta.version = "0.6.4";
         } catch (e) {}
     }
 

@@ -3,7 +3,9 @@ Read .lens/AXIOM.md, .lens/ETHOS.md, .lens/MODUS.md, .lens/SET.json, and today's
 **MISSION:** Synchronize and evolve the subject's Trinity Nodes.
 
 **PROTOCOL:**
-0. **Self-Repair:** Check if `.lens/SET.json` exists and `meta.version` is "0.6.3". If missing or outdated, run `skills/lens/scripts/bootstrap.js` immediately to align the environment before proceeding.
+0. **Self-Repair & Sync:** 
+   - Check if `.lens/SET.json` exists and `meta.version` is "0.6.4". If missing or outdated, run `skills/lens/scripts/bootstrap.js` immediately to align the environment before proceeding.
+   - **Model Sync:** Check the `model` specified in `.lens/SET.json` for `interview` (if set) or use the global default. Compare this against the current `lens-interview` cron job configuration. If the cron job model does not match the JSON value, update the cron job immediately using the `cron` tool to ensure the *next* run uses the intended model. Carry out the current run with the model that triggered it.
 
 1. **Scan:** Identify a section that is sparse or missing detail. Cross-reference with memory files from the last 48 hours.
 2. **Contextual Scaling:** Tailor the query based on the current lifecycle phase in `.lens/SET.json`:
