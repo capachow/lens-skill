@@ -1,10 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-// Extract the single source of truth version
 const expectedVersion = require('../package.json').version;
 
-// Conditionally run self-healing bootstrap if out of date or missing
 if (expectedVersion) {
   const setPath = path.join(process.env.HOME, '.lens/SET.json');
   let needsBootstrap = !fs.existsSync(setPath);
