@@ -5,9 +5,8 @@
 - `skills/lens/references/trinity-definitions.md` (Node scope and purpose)
 
 **PROTOCOL:**
-0. **Self-Repair & Sync:** 
-   - Check if `.lens/SET.json` exists and `meta.version` is "0.7.0". If missing or outdated, run `skills/lens/scripts/bootstrap.js` immediately to align the environment before proceeding.
-   - **Model Sync:** Compare the `model` specified in `.lens/SET.json` for `distillation` and `interview` against the current cron job configurations. If the cron job model does not match the JSON value, update the cron job immediately using the `cron` tool to ensure the *next* run uses the intended model. Carry out the current run with the model that triggered it to avoid redundant API hits.
+0. **Model Sync:** 
+   - Compare the `model` specified in `.lens/SET.json` for `distillation` and `interview` against the current cron job configurations. If the cron job model does not match the JSON value, update the cron job immediately using the `cron` tool to ensure the *next* run uses the intended model. Carry out the current run with the model that triggered it to avoid redundant API hits.
 
 1. **Discovery & Retrieval (MANDATORY):**
    - You MUST execute the `read` tool to fetch `skills/lens/scripts/transcripts.txt` into your context before proceeding. No exceptions.

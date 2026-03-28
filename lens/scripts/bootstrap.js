@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 
+const LENS_VERSION = "0.7.0";
+
 async function runMigrations(axiomPath, settings, jobs) {
     if (fs.existsSync(axiomPath)) {
         const axiom = fs.readFileSync(axiomPath, 'utf8');
@@ -69,7 +71,7 @@ async function bootstrap() {
 
     let settings = {
         meta: { 
-            version: "0.7.0",
+            version: LENS_VERSION,
             installed: new Date().toISOString().split('T')[0] 
         },
         interview: { phase: "onboarding", questions: 7, model: "" },
@@ -82,7 +84,7 @@ async function bootstrap() {
             settings.meta = { ...settings.meta, ...(existing.meta || {}) };
             settings.interview = { ...settings.interview, ...(existing.interview || {}) };
             settings.distillation = { ...settings.distillation, ...(existing.distillation || {}) };
-            settings.meta.version = "0.7.0";
+            settings.meta.version = LENS_VERSION;
         } catch (e) {}
     }
 

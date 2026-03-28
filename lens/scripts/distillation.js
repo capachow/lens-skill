@@ -1,5 +1,13 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
+
+// Unconditionally run bootstrap to ensure state machine and migrations are perfectly aligned
+try {
+  execSync('node ' + path.join(__dirname, 'bootstrap.js'), { stdio: 'ignore' });
+} catch (e) {
+  // Proceed even if bootstrap fails
+}
 
 const SESSIONS_DIR = path.join(process.env.HOME, '.openclaw/agents/main/sessions');
 const OUTPUT_FILE = path.join(__dirname, 'transcripts.txt');
