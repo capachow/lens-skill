@@ -30,4 +30,4 @@
    - **Priority Scaling:** Maintain up to 10 Priority Traits in ETHOS and 5 Linguistic Markers in MODUS.
 
 **OUTPUT:**
-Update Trinity Nodes. Post a summary of new captures and the current lifecycle phase.
+Update Trinity Nodes. Return a summary of new captures and the current lifecycle phase as your final text response. Do NOT use the `message` tool, and do NOT attempt to clear or empty the `transcripts.txt` file manually.
