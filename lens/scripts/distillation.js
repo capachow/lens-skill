@@ -85,7 +85,7 @@ if (userMessages.length === 0) {
 
 const formattedOutput = userMessages.map(m => {
   const dt = new Date(m.timestamp);
-  return `[${dt.toISOString().substring(0, 16).replace('T', ' ')}] Joshua: ${m.text}`;
+  return `[${dt.toISOString().substring(0, 16).replace('T', ' ')}] User: ${m.text}`;
 }).join('\n\n');
 
 fs.writeFileSync(OUTPUT_FILE, formattedOutput, 'utf-8');

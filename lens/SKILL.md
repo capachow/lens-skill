@@ -6,7 +6,8 @@ metadata:
     "openclaw": {
       "emoji": "🧐",
       "requires": { 
-        "files": [".lens/AXIOM.md", ".lens/ETHOS.md", ".lens/MODUS.md", ".lens/SET.json"],
+        "bins": ["node"],
+        "files": [".lens/AXIOM.md", ".lens/ETHOS.md", ".lens/MODUS.md", ".lens/SET.json", "~/.openclaw/agents/main/sessions/*.jsonl"],
         "env": ["HOME"]
       }
     }
