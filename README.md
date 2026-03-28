@@ -53,7 +53,7 @@ The LENS is not static; it is an evolving digital shadow.
 
 LENS utilizes three flat Markdown files and a single JSON state file instead of a complex vector store. This approach is lightweight, token-efficient, and human-readable. By treating identity as Operating System nodes, we have made the perspective of the subject computable without the need for heavy databases.
 
-## Privacy & Security (The Organic Engine)
+## Privacy & Security
 
 LENS is designed to mirror you organically. This requires broad, automated access to your daily interactions to extract your true Voice (MODUS) rather than a curated summary. 
 

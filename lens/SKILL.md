@@ -68,6 +68,15 @@ When acting on behalf of the subject:
 5. **Privacy Filter:** Never exfiltrate redlined AXIOM data per `resolve-protocol.md`.
 6. **Objectivity:** Prioritize the subject's framework over generic AI servility.
 
+## Privacy & Security (The Organic Engine)
+
+LENS is designed to mirror you organically. This requires automated access to your daily interactions to extract your true Voice (MODUS). To achieve this, the distillation script parses your last 24 hours of OpenClaw session transcripts (`~/.openclaw/agents/main/sessions/*.jsonl`).
+
+Strict safeguards protect your data during this process:
+1. **The `#private` Scrubber:** Typing `#private` anywhere in a message causes the zero-token preflight script to completely skip it. The AI never sees it.
+2. **The Privacy Guard:** The extraction prompt is strictly forbidden from capturing raw credentials, specific addresses, or sensitive health data—only the *conceptual logic* behind them.
+3. **Opt-in Transparency:** The skill requires `HOME` and `OPENCLAW_CRON_LIST` access to automate evolution. If you prefer manual distillation, simply delete the `lens-distillation` cron job.
+
 ## Refinement & Evolution (On-Demand)
 
 The LENS evolves naturally through daily interaction, but the subject can also proactively trigger refinement:
