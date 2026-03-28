@@ -1,12 +1,40 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 
-// Unconditionally run bootstrap to ensure state machine and migrations are perfectly aligned
-try {
-  execSync('node ' + path.join(__dirname, 'bootstrap.js'), { stdio: 'ignore' });
-} catch (e) {
-  // Proceed even if bootstrap fails
+// Extract the single source of truth version from bootstrap.js
+const bootstrapPath = path.join(__dirname, 'bootstrap.js');
+let expectedVersion = null;
+
+if (fs.existsSync(bootstrapPath)) {
+  const bootstrapContent = fs.readFileSync(bootstrapPath, 'utf-8');
+  const versionMatch = bootstrapContent.match(/const LENS_VERSION\s*=\s*["'](.*?)["']/);
+  if (versionMatch) {
+    expectedVersion = versionMatch[1];
+  }
+}
+
+// Conditionally run self-healing bootstrap if out of date or missing
+if (expectedVersion) {
+  const setPath = path.join(process.env.HOME, '.lens/SET.json');
+  let needsBootstrap = !fs.existsSync(setPath);
+  
+  if (!needsBootstrap) {
+    try {
+      const setJson = JSON.parse(fs.readFileSync(setPath, 'utf-8'));
+      if (setJson.meta?.version !== expectedVersion) {
+        needsBootstrap = true;
+      }
+    } catch (e) {
+      needsBootstrap = true;
+    }
+  }
+
+  if (needsBootstrap) {
+    const { execSync } = require('child_process');
+    try {
+      execSync('node ' + bootstrapPath, { stdio: 'ignore' });
+    } catch (e) {}
+  }
 }
 
 const SESSIONS_DIR = path.join(process.env.HOME, '.openclaw/agents/main/sessions');
