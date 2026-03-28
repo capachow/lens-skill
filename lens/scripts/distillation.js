@@ -9,7 +9,7 @@ const pkgPath = path.join(__dirname, '../package.json');
 const expectedVersion = JSON.parse(fs.readFileSync(pkgPath, 'utf-8')).version;
 
 if (expectedVersion) {
-  const setPath = path.join(process.env.HOME, '.lens/SET.json');
+  const setPath = path.join(process.cwd(), '.lens/SET.json');
   let needsBootstrap = !fs.existsSync(setPath);
   
   if (!needsBootstrap) {
