@@ -62,6 +62,9 @@ if (fs.existsSync(SESSIONS_DIR)) {
             }
             
             if (text && !text.includes('HEARTBEAT_OK') && !text.includes('A new session was started via') && !text.includes('#private')) {
+              text = text.replace(/```[\s\S]*?```/g, '\n[CODE BLOCK REMOVED]\n');
+              text = text.replace(/^>.*$/gm, '[QUOTE REMOVED]');
+              
               userMessages.push({
                 timestamp: entry.message.timestamp || entry.timestamp || stats.mtimeMs,
                 text: text.trim()
