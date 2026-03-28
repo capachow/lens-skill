@@ -60,12 +60,7 @@ export async function bootstrap() {
     const lensDir = path.join(process.cwd(), '.lens');
     if (!fs.existsSync(lensDir)) fs.mkdirSync(lensDir);
 
-    let timezone = 'UTC';
-    try {
-        const userContent = fs.readFileSync(path.join(process.cwd(), 'USER.md'), 'utf8');
-        const tzMatch = userContent.match(/Timezone:.*?\((.*?)\)/);
-        if (tzMatch && tzMatch[1]) timezone = tzMatch[1].trim();
-    } catch (e) {}
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
     const setPath = path.join(lensDir, 'SET.json');
     const axiomPath = path.join(lensDir, 'AXIOM.md');
