@@ -53,5 +53,16 @@ The LENS is not static; it is an evolving digital shadow.
 
 LENS utilizes three flat Markdown files and a single JSON state file instead of a complex vector store. This approach is lightweight, token-efficient, and human-readable. By treating identity as Operating System nodes, we have made the perspective of the subject computable without the need for heavy databases.
 
+## Privacy & Security (The Organic Engine)
+
+LENS is designed to mirror you organically. This requires broad, automated access to your daily interactions to extract your true Voice (MODUS) rather than a curated summary. 
+
+To achieve this, the installation registers two background **cron jobs** and the distillation script natively parses your **last 24 hours of OpenClaw session transcripts** (`~/.openclaw/agents/main/sessions/*.jsonl`). 
+
+We have built strict safeguards to protect your data during this process:
+1.  **The `#private` Scrubber:** If you type `#private` anywhere in a message, the zero-token preflight script will completely skip that message. The AI will never see it, and it will never be written to the staging transcript.
+2.  **The Privacy Guard:** The distillation prompt is strictly instructed to **never** extract raw credentials, specific addresses, or sensitive health data. If such data slips through, the LENS will only extract the *conceptual logic* (e.g., "The subject prefers 1Password for security") rather than the data itself.
+3.  **Opt-in Transparency:** The skill explicitly requires `HOME` and `OPENCLAW_CRON_LIST` environment variables to function. If you prefer not to use the automated distillation loop, you can simply delete the `lens-distillation` cron job after installation; the Trinity Nodes will still function as a manual perspective engine for your agent.
+
 ---
 > *Proudly refined through my own LENS.*

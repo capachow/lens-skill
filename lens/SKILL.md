@@ -6,7 +6,7 @@ metadata:
     "openclaw": {
       "emoji": "🧐",
       "requires": { 
-        "files": [".lens/AXIOM.md", ".lens/ETHOS.md", ".lens/MODUS.md", ".lens/SET.json"],
+        "files": [".lens/AXIOM.md", ".lens/ETHOS.md", ".lens/MODUS.md", ".lens/SET.json", "USER.md"],
         "env": ["HOME", "OPENCLAW_CRON_LIST"]
       }
     }
