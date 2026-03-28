@@ -31,32 +31,18 @@ The subject's identity is defined by three files located in the `.lens/` directo
 
 ## Onboarding Protocol (First Run)
 
-If the `.lens/` directory or Trinity Nodes do not exist:
-1. **Initialize:** Create the `.lens/` directory.
-2. **Seed:** Run `skills/lens/scripts/bootstrap.js` to initialize files and register cron jobs.
-3. **Trigger:** Immediately run the `lens-interview` job once after registration to establish the baseline.
-4. **Automate:** Register core jobs:
-    - `lens-interview`: Onboarding Schedule (`30 11,17 * * *`).
-    - `lens-distillation`: Daily Maintenance (`0 3 * * *`).
+If the `.lens/` directory or Trinity Nodes do not exist, run `skills/lens/scripts/bootstrap.js` via the `exec` tool. It natively creates the directories, seeds the templates, and registers the daily `lens-interview` and `lens-distillation` cron schedules.
 
 ## Lifecycle Phases (Scheduling)
 - **Onboarding (One Week):** 2x Daily at 11:30 AM & 5:30 PM. Focus: Core Data Acquisition.
 - **Stabilizing (Three Weeks):** 1x Daily at 11:30 AM. Focus: Value-Logic Calibration.
 - **Habitual (Ongoing):** 1x Weekly (Wednesdays) at 11:30 AM. Focus: Deep Philosophical Sync.
 
-## Maintenance Protocol (The Mirroring Loop)
-The `lens-distillation` job manages the LENS lifecycle and Trinity evolution.
+## Orchestration & Evolution
 
-1. **Preflight (Zero-Token):** Run `skills/lens/scripts/distillation.js` to parse raw OpenClaw session transcripts (the true, unfiltered source of the subject's voice). If no new input exists, it quietly shuts down without waking the AI.
-2. **Distill:** Use `skills/lens/prompts/distillation.md` to extract data from the staged transcripts into the Nodes. Apply the "High-Threshold Filter" to guarantee only rare facts and philosophical logic enter AXIOM/ETHOS, while MODUS captures raw written patterns.
-3. **Lifecycle Logic:** 
-   - Read and write state to `.lens/SET.json`.
-   - Update the `lens-interview` cron schedule via the `cron` tool on phase transitions.
-4. **Refine:**
-    - **AXIOM (The Truth):** Add only verified, immutable facts (history, assets, bio).
-    - **ETHOS (The Nature):** Maintain persistent traits and values. Use a 10-item Priority Traits list.
-    - **MODUS (The Voice):** Capture and refine linguistic patterns and formatting habits. Use a 5-item Linguistic Markers list.
-    - **Integrity:** Never delete historical data; merge and refine to maintain structural clarity.
+- **Distillation:** A background cron job (`lens-distillation`) runs nightly to extract new traits from the user's raw chat transcripts, using the `distillation.md` prompt.
+- **Interview:** A recurring cron job (`lens-interview`) prompts the user to calibrate their perspective over time.
+- **Self-Healing:** Natively handles state migrations and version parity via `SET.json` and `package.json`.
 
 ## Strategic Execution
 
@@ -68,19 +54,14 @@ When acting on behalf of the subject:
 5. **Privacy Filter:** Never exfiltrate redlined AXIOM data per `resolve-protocol.md`.
 6. **Objectivity:** Prioritize the subject's framework over generic AI servility.
 
-## Privacy & Security (The Organic Engine)
+## Privacy & Security
 
-LENS is designed to mirror you organically. This requires automated access to your daily interactions to extract your true Voice (MODUS). To achieve this, the distillation script parses your last 24 hours of OpenClaw session transcripts (`~/.openclaw/agents/main/sessions/*.jsonl`).
+LENS accesses `~/.openclaw/agents/main/sessions/*.jsonl` via cron to organically distill the subject's voice.
+- **Privacy Scrubber:** Any message containing `#private` is skipped before AI processing.
+- **Privacy Guard:** Do NOT extract raw credentials or PII. Extract conceptual logic only.
+- **Opt-in:** Users may delete the `lens-distillation` cron job to disable automated processing.
 
-Strict safeguards protect your data during this process:
-1. **The `#private` Scrubber:** Typing `#private` anywhere in a message causes the zero-token preflight script to completely skip it. The AI never sees it.
-2. **The Privacy Guard:** The extraction prompt is strictly forbidden from capturing raw credentials, specific addresses, or sensitive health data—only the *conceptual logic* behind them.
-3. **Opt-in Transparency:** The skill requires `HOME` and `OPENCLAW_CRON_LIST` access to automate evolution. If you prefer manual distillation, simply delete the `lens-distillation` cron job.
+## Refinement (On-Demand)
 
-## Refinement & Evolution (On-Demand)
-
-The LENS evolves naturally through daily interaction, but the subject can also proactively trigger refinement:
-
-1. **Focus the LENS:** If the subject wants to proactively provide data (e.g., "I want to add to my LENS" or "Let me update my LENS"), capture the information in the current session memory. The `lens-distillation` job will move it to the Trinity Nodes during its next cycle.
-2. **LENS Interview:** If the subject wants to be prompted (e.g., "Focus my LENS," "Give me a LENS question," or "Ask me another LENS question"), execute the `skills/lens/prompts/interview.md` protocol immediately to provide a query.
-3. **Self-Healing:** A zero-token script cross-references `SET.json` against the core `package.json` version every night. It automatically detects legacy configurations and triggers silent, instant migrations to maintain perfect structural parity.
+- **Focus the LENS:** If the subject states a preference (e.g., "Add this to my LENS: I prefer brief emails"), simply acknowledge it. The nightly distillation script will naturally parse the transcript and extract it to the Trinity Nodes.
+- **LENS Interview:** If the subject explicitly asks for a LENS question (e.g., "Focus my LENS", "Give me a LENS question"), immediately execute `skills/lens/prompts/interview.md` to query them.
