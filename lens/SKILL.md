@@ -44,8 +44,8 @@ If the `.lens/` directory or Trinity Nodes do not exist:
 ## Maintenance Protocol (The Mirroring Loop)
 The `lens-distillation` job manages the LENS lifecycle and Trinity evolution.
 
-1. **Observe:** Read the latest `memory/YYYY-MM-DD.md` files (today + yesterday) from the workspace.
-2. **Distill:** Use `skills/lens/prompts/distillation.md` to move data from memory files to Nodes. Focus exclusively on the subject's direct messages and decisions.
+1. **Preflight (Zero-Token):** Run `skills/lens/scripts/distillation.js` to parse raw OpenClaw session transcripts (the true, unfiltered source of the subject's voice). If no new input exists, it quietly shuts down without waking the AI.
+2. **Distill:** Use `skills/lens/prompts/distillation.md` to extract data from the staged transcripts into the Nodes. Apply the "High-Threshold Filter" to guarantee only rare facts and philosophical logic enter AXIOM/ETHOS, while MODUS captures raw written patterns.
 3. **Lifecycle Logic:** 
    - Read and write state to `.lens/SET.json`.
    - Update the `lens-interview` cron schedule via the `cron` tool on phase transitions.
@@ -71,4 +71,4 @@ The LENS evolves naturally through daily interaction, but the subject can also p
 
 1. **Focus the LENS:** If the subject wants to proactively provide data (e.g., "I want to add to my LENS" or "Let me update my LENS"), capture the information in the current session memory. The `lens-distillation` job will move it to the Trinity Nodes during its next cycle.
 2. **LENS Interview:** If the subject wants to be prompted (e.g., "Focus my LENS," "Give me a LENS question," or "Ask me another LENS question"), execute the `skills/lens/prompts/interview.md` protocol immediately to provide a query.
-3. **Self-Healing:** The LENS automatically detects legacy configurations or missing environment variables and triggers silent migrations to maintain environment parity (v0.6.3+).
+3. **Self-Healing:** A zero-token script cross-references `SET.json` against the core `package.json` version every night. It automatically detects legacy configurations and triggers silent, instant migrations to maintain perfect structural parity.
