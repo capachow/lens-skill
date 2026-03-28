@@ -35,6 +35,7 @@ Complexity is mapped into three distinct nodes. These anchors define the subject
 
 To keep the Trinity Nodes pure, the LENS uses an isolated configuration layer:
 
+*   **`package.json`**: The single source of truth for the system version. Decoupling this from the execution logic ensures updates are structurally clean and risk-free.
 *   **`SET.json`**: Manages the "State Machine." This file tracks your lifecycle phase, question counts, and model preferences. This separation ensures that skill updates never overwrite your identity or your settings.
 
 ## Evolution & Calibration
@@ -42,11 +43,11 @@ To keep the Trinity Nodes pure, the LENS uses an isolated configuration layer:
 The LENS is not static; it is an evolving digital shadow.
 
 *   **The Interview Protocol:** The system progresses through **onboarding** (2x daily for 1 week), **stabilizing** (1x daily for 3 weeks), and **habitual** (1x weekly) schedules to calibrate your digital shadow.
-*   **The Distillation Loop:** The engine of evolution. A background routine analyzes patterns to maintain structural peace without user intervention.
-*   **Contextual Isolation:** To prevent "AI-muddiness," the distillation engine strictly analyzes the subject's raw input, ignoring its own previous outputs.
+*   **The Distillation Loop:** The engine of evolution. A zero-token background script parses your raw OpenClaw session transcripts every night. If you haven't spoken, it quietly shuts down without waking the AI or burning tokens.
+*   **Contextual Isolation:** To prevent "AI-muddiness," the distillation engine extracts only the messages tagged with your user role, completely discarding assistant replies, system logs, and operational noise. A strict "High-Threshold Filter" ensures only rare, meaningful facts enter AXIOM and ETHOS, while MODUS captures your raw written patterns.
 *   **Silence Toggle:** You have total control. Setting `questions` to `false` in `SET.json` silences the interview routine while keeping the identity engine active.
 *   **Refinement on Demand:** You can proactively sharpen the LENS at any time. Simply say **"Focus my LENS"** or **"Ask me a LENS question"** to trigger an immediate calibration.
-*   **Self-Healing Architecture:** Starting with v0.6.3, the system is equipped with an automated repair engine. It detects legacy configurations or missing environment variables and triggers silent migrations to ensure your LENS remains performant and up-to-date without manual intervention.
+*   **Self-Healing Architecture:** The system features an automated repair engine. Every night, the zero-token preflight script compares your `SET.json` against the core `package.json` version. If it detects a legacy configuration or missing variables, it triggers a silent, instant migration to ensure your LENS remains performant and perfectly aligned without manual intervention.
 
 ## Structural Peace
 

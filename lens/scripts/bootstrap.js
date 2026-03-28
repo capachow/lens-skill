@@ -1,5 +1,10 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const pkgPath = path.join(__dirname, '../package.json');
+const LENS_VERSION = JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version;
 
 async function runMigrations(axiomPath, settings, jobs) {
     if (fs.existsSync(axiomPath)) {
@@ -69,7 +74,7 @@ async function bootstrap() {
 
     let settings = {
         meta: { 
-            version: "0.6.4",
+            version: LENS_VERSION,
             installed: new Date().toISOString().split('T')[0] 
         },
         interview: { phase: "onboarding", questions: 7, model: "" },
@@ -82,7 +87,7 @@ async function bootstrap() {
             settings.meta = { ...settings.meta, ...(existing.meta || {}) };
             settings.interview = { ...settings.interview, ...(existing.interview || {}) };
             settings.distillation = { ...settings.distillation, ...(existing.distillation || {}) };
-            settings.meta.version = "0.6.4";
+            settings.meta.version = LENS_VERSION;
         } catch (e) {}
     }
 
@@ -94,7 +99,7 @@ async function bootstrap() {
             sessionTarget: "isolated",
             payload: {
                 kind: "agentTurn",
-                message: "Read skills/lens/prompts/distillation.md and follow it.",
+                message: "Run `node skills/lens/scripts/distillation.js`. If the output is 'EMPTY', reply with ONLY: NO_REPLY and stop. If the output is 'READY', read `skills/lens/prompts/distillation.md` and follow it strictly.",
                 model: settings.distillation.model || undefined
             },
             delivery: {
