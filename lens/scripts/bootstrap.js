@@ -94,7 +94,7 @@ async function bootstrap() {
             sessionTarget: "isolated",
             payload: {
                 kind: "agentTurn",
-                message: "Read skills/lens/prompts/distillation.md and follow it.",
+                message: "Run `node skills/lens/scripts/distillation.js`. If the output is 'EMPTY', reply with ONLY: NO_REPLY and stop. If the output is 'READY', read `skills/lens/prompts/distillation.md` and follow it strictly.",
                 model: settings.distillation.model || undefined
             },
             delivery: {
