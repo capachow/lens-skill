@@ -56,7 +56,7 @@ async function runMigrations(axiomPath, settings, jobs) {
     }
 }
 
-async function bootstrap() {
+export async function bootstrap() {
     const lensDir = path.join(process.cwd(), '.lens');
     if (!fs.existsSync(lensDir)) fs.mkdirSync(lensDir);
 
@@ -137,8 +137,11 @@ async function bootstrap() {
     return { jobs, timezone, triggerImmediate: "lens-interview" };
 }
 
-bootstrap().then(result => {
-    console.log("BOOTSTRAP_RESULT_START");
-    console.log(JSON.stringify(result, null, 2));
-    console.log("BOOTSTRAP_RESULT_END");
-});
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+    bootstrap().then(result => {
+        console.log("BOOTSTRAP_RESULT_START");
+        console.log(JSON.stringify(result, null, 2));
+        console.log("BOOTSTRAP_RESULT_END");
+    });
+}
+

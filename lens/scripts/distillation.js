@@ -1,7 +1,12 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { bootstrap } from './bootstrap.js';
 
-const expectedVersion = require('../package.json').version;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const pkgPath = path.join(__dirname, '../package.json');
+const expectedVersion = JSON.parse(fs.readFileSync(pkgPath, 'utf-8')).version;
 
 if (expectedVersion) {
   const setPath = path.join(process.env.HOME, '.lens/SET.json');
@@ -19,9 +24,8 @@ if (expectedVersion) {
   }
 
   if (needsBootstrap) {
-    const { execSync } = require('child_process');
     try {
-      execSync('node ' + path.join(__dirname, 'bootstrap.js'), { stdio: 'ignore' });
+      await bootstrap();
     } catch (e) {}
   }
 }
