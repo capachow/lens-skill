@@ -11,6 +11,8 @@
 1. **Discovery & Retrieval (MANDATORY):**
    - You MUST execute the `read` tool to fetch `skills/lens/scripts/transcripts.txt` into your context before proceeding. No exceptions.
    - **Critical Filtering:** This file contains ONLY the raw, unfiltered messages sent by the human subject over the last 24 hours. Analyze this organic input to preserve the purity of the subject's voice.
+   - **Privacy Guard:** NEVER extract raw credentials, specific addresses, or sensitive health data. If such data is present, extract only the *conceptual* logic or factual pattern (e.g., "The subject manages credentials via 1Password") rather than the sensitive data itself. 
+   - **Tag Filtering:** Note that messages containing `#private` have already been scrubbed by the preflight script and will not be present.
 
 2. **LENS Lifecycle:**
    - Read `.lens/SET.json`. Decrement `interview.questions`.

@@ -61,7 +61,7 @@ if (fs.existsSync(SESSIONS_DIR)) {
               text = content;
             }
             
-            if (text && !text.includes('HEARTBEAT_OK') && !text.includes('A new session was started via')) {
+            if (text && !text.includes('HEARTBEAT_OK') && !text.includes('A new session was started via') && !text.includes('#private')) {
               userMessages.push({
                 timestamp: entry.message.timestamp || entry.timestamp || stats.mtimeMs,
                 text: text.trim()
