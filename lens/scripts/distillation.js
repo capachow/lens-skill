@@ -1,17 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-// Extract the single source of truth version from bootstrap.js
-const bootstrapPath = path.join(__dirname, 'bootstrap.js');
-let expectedVersion = null;
-
-if (fs.existsSync(bootstrapPath)) {
-  const bootstrapContent = fs.readFileSync(bootstrapPath, 'utf-8');
-  const versionMatch = bootstrapContent.match(/const LENS_VERSION\s*=\s*["'](.*?)["']/);
-  if (versionMatch) {
-    expectedVersion = versionMatch[1];
-  }
-}
+// Extract the single source of truth version
+const expectedVersion = require('../package.json').version;
 
 // Conditionally run self-healing bootstrap if out of date or missing
 if (expectedVersion) {
@@ -32,7 +23,7 @@ if (expectedVersion) {
   if (needsBootstrap) {
     const { execSync } = require('child_process');
     try {
-      execSync('node ' + bootstrapPath, { stdio: 'ignore' });
+      execSync('node ' + path.join(__dirname, 'bootstrap.js'), { stdio: 'ignore' });
     } catch (e) {}
   }
 }

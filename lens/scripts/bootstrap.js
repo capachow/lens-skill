@@ -1,7 +1,10 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-const LENS_VERSION = "0.7.0";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const pkgPath = path.join(__dirname, '../package.json');
+const LENS_VERSION = JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version;
 
 async function runMigrations(axiomPath, settings, jobs) {
     if (fs.existsSync(axiomPath)) {
