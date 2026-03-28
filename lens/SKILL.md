@@ -7,7 +7,7 @@ metadata:
       "emoji": "🧐",
       "requires": { 
         "files": [".lens/AXIOM.md", ".lens/ETHOS.md", ".lens/MODUS.md", ".lens/SET.json"],
-        "env": ["HOME", "OPENCLAW_CRON_LIST"]
+        "env": ["HOME"]
       }
     }
   }

@@ -62,7 +62,7 @@ To achieve this, the installation registers two background **cron jobs** and the
 We have built strict safeguards to protect your data during this process:
 1.  **The `#private` Scrubber:** If you type `#private` anywhere in a message, the zero-token preflight script will completely skip that message. The AI will never see it, and it will never be written to the staging transcript.
 2.  **The Privacy Guard:** The distillation prompt is strictly instructed to **never** extract raw credentials, specific addresses, or sensitive health data. If such data slips through, the LENS will only extract the *conceptual logic* (e.g., "The subject prefers 1Password for security") rather than the data itself.
-3.  **Opt-in Transparency:** The skill explicitly requires `HOME` and `OPENCLAW_CRON_LIST` environment variables to function. If you prefer not to use the automated distillation loop, you can simply delete the `lens-distillation` cron job after installation; the Trinity Nodes will still function as a manual perspective engine for your agent.
+3.  **Opt-in Transparency:** The skill explicitly requires the `HOME` environment variable to locate your session transcripts. If you prefer not to use the automated distillation loop, you can simply delete the `lens-distillation` cron job after installation; the Trinity Nodes will still function as a manual perspective engine for your agent.
 
 ---
 > *Proudly refined through my own LENS.*
