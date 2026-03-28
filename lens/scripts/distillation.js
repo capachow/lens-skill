@@ -62,13 +62,21 @@ if (fs.existsSync(SESSIONS_DIR)) {
             }
             
             if (text && !text.includes('HEARTBEAT_OK') && !text.includes('A new session was started via') && !text.includes('#private')) {
-              text = text.replace(/```[\s\S]*?```/g, '\n[CODE BLOCK REMOVED]\n');
-              text = text.replace(/^>.*$/gm, '[QUOTE REMOVED]');
+              if (text.length > 2000 && !text.includes('\\n\\n')) {
+                continue;
+              }
               
-              userMessages.push({
-                timestamp: entry.message.timestamp || entry.timestamp || stats.mtimeMs,
-                text: text.trim()
-              });
+              text = text.replace(/```[\\s\\S]*?```/g, '');
+              text = text.replace(/^>.*$/gm, '');
+              text = text.replace(/<<<EXTERNAL_UNTRUSTED_CONTENT[\\s\\S]*?END_EXTERNAL_UNTRUSTED_CONTENT.*>>>/g, '');
+              text = text.trim();
+              
+              if (text.length > 10) {
+                userMessages.push({
+                  timestamp: entry.message.timestamp || entry.timestamp || stats.mtimeMs,
+                  text: text
+                });
+              }
             }
           }
         } catch (e) {
