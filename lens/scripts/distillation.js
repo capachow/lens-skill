@@ -62,7 +62,7 @@ if (fs.existsSync(SESSIONS_DIR)) {
               text = content;
             }
             
-            if (text && !text.includes('HEARTBEAT_OK') && !text.includes('A new session was started via') && !text.includes('#private')) {
+            if (text && !text.includes('HEARTBEAT_OK') && !text.startsWith('[cron:') && !text.includes('A new session was started via') && !text.includes('#private')) {
               if (text.length > 2000 && !text.includes('\n\n')) {
                 continue;
               }
