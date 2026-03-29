@@ -130,11 +130,14 @@ export async function bootstrap(reboot = false) {
       id: "lens-interview",
       name: "lens-interview",
       schedule: { kind: "cron", expr: interviewExpr, tz: timezone },
-      sessionTarget: "main",
+      sessionTarget: "isolated",
       payload: {
-        kind: "systemEvent",
-        text: "Run `node skills/lens/scripts/interview.js`. If the output includes 'INTERVIEW_READY', read `skills/lens/prompts/interview.md` and follow it strictly. Generate a single question for the human and stop.",
+        kind: "agentTurn",
+        message: "Run `node skills/lens/scripts/interview.js`. If the output includes 'INTERVIEW_READY', read `skills/lens/prompts/interview.md` and follow it strictly. Generate a single question for the human and stop.",
         model: scope.interview.model || undefined
+      },
+      delivery: {
+        mode: "announce"
       }
     }
   ];
