@@ -63,9 +63,20 @@ export async function bootstrap() {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
     const setPath = path.join(lensDir, 'SET.json');
+    const scopePath = path.join(lensDir, 'SCOPE.json');
+    const oldTracePath = path.join(__dirname, 'transcripts.txt');
+    const oldTraceInLensPath = path.join(lensDir, 'transcripts.txt');
     const axiomPath = path.join(lensDir, 'AXIOM.md');
     const ethosPath = path.join(lensDir, 'ETHOS.md');
     const modusPath = path.join(lensDir, 'MODUS.md');
+
+    if (fs.existsSync(setPath) && !fs.existsSync(scopePath)) {
+        fs.renameSync(setPath, scopePath);
+    }
+
+    [oldTracePath, oldTraceInLensPath].forEach(oldFile => {
+        if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile);
+    });
 
     let settings = {
         meta: { 
@@ -76,9 +87,9 @@ export async function bootstrap() {
         distillation: { model: "" }
     };
 
-    if (fs.existsSync(setPath)) {
+    if (fs.existsSync(scopePath)) {
         try {
-            const existing = JSON.parse(fs.readFileSync(setPath, 'utf8'));
+            const existing = JSON.parse(fs.readFileSync(scopePath, 'utf8'));
             settings.meta = { ...settings.meta, ...(existing.meta || {}) };
             settings.interview = { ...settings.interview, ...(existing.interview || {}) };
             settings.distillation = { ...settings.distillation, ...(existing.distillation || {}) };
@@ -116,7 +127,7 @@ export async function bootstrap() {
 
     await runMigrations(axiomPath, settings, jobs);
 
-    fs.writeFileSync(setPath, JSON.stringify(settings, null, 2));
+    fs.writeFileSync(scopePath, JSON.stringify(settings, null, 2));
 
     const templatesDir = path.join(process.cwd(), 'skills/lens/scripts/templates');
     [
@@ -139,4 +150,3 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         console.log("BOOTSTRAP_RESULT_END");
     });
 }
-

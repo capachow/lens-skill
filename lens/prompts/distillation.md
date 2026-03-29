@@ -6,17 +6,17 @@
 
 **PROTOCOL:**
 0. **Model Sync:** 
-   - Compare the `model` specified in `.lens/SET.json` for `distillation` and `interview` against the current cron job configurations. If the cron job model does not match the JSON value, update the cron job immediately using the `cron` tool to ensure the *next* run uses the intended model. Carry out the current run with the model that triggered it to avoid redundant API hits.
+   - Compare the `model` specified in `.lens/SCOPE.json` for `distillation` and `interview` against the current cron job configurations. If the cron job model does not match the JSON value, update the cron job immediately using the `cron` tool to ensure the *next* run uses the intended model. Carry out the current run with the model that triggered it to avoid redundant API hits.
 
 1. **Discovery & Retrieval (MANDATORY):**
-   - You MUST execute the `read` tool to fetch `skills/lens/scripts/transcripts.txt` into your context before proceeding. No exceptions.
+   - You MUST execute the `read` tool to fetch `.lens/TRACE.txt` into your context before proceeding. No exceptions.
    - **Critical Filtering:** This file contains ONLY the raw, unfiltered messages sent by the human subject over the last 24 hours. Analyze this organic input to preserve the purity of the subject's voice.
    - **Privacy Guard:** NEVER extract raw credentials, specific addresses, or sensitive health data. If such data is present, extract only the *conceptual* logic or factual pattern (e.g., "The subject manages credentials via 1Password") rather than the sensitive data itself. 
    - **Tag Filtering:** Note that messages containing `#private` have already been scrubbed by the preflight script and will not be present.
-   - **Anti-Contamination Guard:** Subjects may occasionally paste raw text, error logs, articles, or code snippets without formatting them. You MUST use strict semantic judgment to differentiate between the subject's natural conversational wrapper (e.g., "Look at this error:", "What do you think of this review:") and the pasted content itself. NEVER extract syntax, tone, or values from copy-pasted material. Only analyze the subject's original, native words.
+   - **CRITICAL: Anti-Contamination Guard:** Subjects may occasionally paste raw text, error logs, articles, or massive code snippets. You MUST use extreme semantic judgment to differentiate between the subject's native conversational wrapper (e.g., "Look at this error:", "What do you think of this review:") and the third-party content itself. NEVER extract syntax, tone, or values from copy-pasted material. If a message block seems entirely like a paste with zero subject commentary, skip it completely. Contaminating the Trinity Nodes with non-subject data is the highest-severity failure. Only analyze the subject's original, native words.
 
 2. **LENS Lifecycle:**
-   - Read `.lens/SET.json`. Decrement `interview.questions`.
+   - Read `.lens/SCOPE.json`. Decrement `interview.questions`.
    - On transition (count <= 0): Advance `interview.phase`, reset `interview.questions` (stabilizing: 21, habitual: true), and update `lens-interview` cron schedule.
    
 3. **Surgical Extraction (High-Threshold Filter):**
@@ -32,4 +32,4 @@
    - **Priority Scaling:** Maintain up to 10 Priority Traits in ETHOS and 5 Linguistic Markers in MODUS.
 
 **OUTPUT:**
-Update Trinity Nodes. Return a summary of new captures and the current lifecycle phase as your final text response. Do NOT use the `message` tool, and do NOT attempt to clear or empty the `transcripts.txt` file manually.
+Update Trinity Nodes. Return a summary of new captures and the current lifecycle phase as your final text response. Do NOT use the `message` tool, and do NOT attempt to clear or empty the `.lens/TRACE.txt` file manually.

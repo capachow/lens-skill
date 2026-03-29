@@ -7,7 +7,7 @@ metadata:
       "emoji": "🧐",
       "requires": { 
         "bins": ["node"],
-        "files": [".lens/AXIOM.md", ".lens/ETHOS.md", ".lens/MODUS.md", ".lens/SET.json", "~/.openclaw/agents/main/sessions/*.jsonl"],
+        "files": [".lens/AXIOM.md", ".lens/ETHOS.md", ".lens/MODUS.md", ".lens/SCOPE.json", ".lens/TRACE.txt", "~/.openclaw/agents/main/sessions/*.jsonl"],
         "env": ["HOME"]
       }
     }
@@ -43,7 +43,7 @@ If the `.lens/` directory or Trinity Nodes do not exist, run `skills/lens/script
 
 - **Distillation:** A background cron job (`lens-distillation`) runs nightly to extract new traits from the user's raw chat transcripts, using the `distillation.md` prompt.
 - **Interview:** A recurring cron job (`lens-interview`) prompts the user to calibrate their perspective over time.
-- **Self-Healing:** Natively handles state migrations and version parity via `SET.json` and `package.json`.
+- **Self-Healing:** Natively handles state migrations and version parity via `SCOPE.json` and `package.json`.
 
 ## Strategic Execution
 
@@ -57,7 +57,7 @@ When acting on behalf of the subject:
 
 ## Privacy & Security
 
-LENS accesses `~/.openclaw/agents/main/sessions/*.jsonl` via cron to organically distill the subject's voice.
+LENS accesses `~/.openclaw/agents/main/sessions/*.jsonl` via cron to organically distill the subject's voice into `.lens/TRACE.txt`.
 - **Privacy Scrubber:** Any message containing `#private` is skipped before AI processing.
 - **Privacy Guard:** Do NOT extract raw credentials or PII. Extract conceptual logic only.
 - **Opt-in:** Users may delete the `lens-distillation` cron job to disable automated processing.

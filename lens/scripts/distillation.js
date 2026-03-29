@@ -10,12 +10,13 @@ const expectedVersion = JSON.parse(fs.readFileSync(pkgPath, 'utf-8')).version;
 
 if (expectedVersion) {
   const setPath = path.join(process.cwd(), '.lens/SET.json');
-  let needsBootstrap = !fs.existsSync(setPath);
+  const scopePath = path.join(process.cwd(), '.lens/SCOPE.json');
+  let needsBootstrap = !fs.existsSync(scopePath);
   
   if (!needsBootstrap) {
     try {
-      const setJson = JSON.parse(fs.readFileSync(setPath, 'utf-8'));
-      if (setJson.meta?.version !== expectedVersion) {
+      const scopeJson = JSON.parse(fs.readFileSync(scopePath, 'utf-8'));
+      if (scopeJson.meta?.version !== expectedVersion) {
         needsBootstrap = true;
       }
     } catch (e) {
@@ -31,7 +32,7 @@ if (expectedVersion) {
 }
 
 const SESSIONS_DIR = path.join(process.env.HOME, '.openclaw/agents/main/sessions');
-const OUTPUT_FILE = path.join(__dirname, 'transcripts.txt');
+const OUTPUT_FILE = path.join(process.cwd(), '.lens/TRACE.txt');
 const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
 const now = Date.now();
 
@@ -62,13 +63,16 @@ if (fs.existsSync(SESSIONS_DIR)) {
             }
             
             if (text && !text.includes('HEARTBEAT_OK') && !text.includes('A new session was started via') && !text.includes('#private')) {
-              if (text.length > 2000 && !text.includes('\\n\\n')) {
+              if (text.length > 2000 && !text.includes('\n\n')) {
                 continue;
               }
               
-              text = text.replace(/```[\\s\\S]*?```/g, '');
+              text = text.replace(/Sender \(untrusted metadata\):[\s\S]*?```[\s\S]*?```\n*/g, '');
+              text = text.replace(/^\[[\s\S]*?\]\s*/gm, '');
+              text = text.replace(/^Current time:.*$/gm, '');
+              text = text.replace(/```[\s\S]*?```/g, '');
               text = text.replace(/^>.*$/gm, '');
-              text = text.replace(/<<<EXTERNAL_UNTRUSTED_CONTENT[\\s\\S]*?END_EXTERNAL_UNTRUSTED_CONTENT.*>>>/g, '');
+              text = text.replace(/<<<EXTERNAL_UNTRUSTED_CONTENT[\s\S]*?END_EXTERNAL_UNTRUSTED_CONTENT.*>>>/g, '');
               text = text.trim();
               
               if (text.length > 10) {
@@ -95,8 +99,7 @@ if (userMessages.length === 0) {
 }
 
 const formattedOutput = userMessages.map(m => {
-  const dt = new Date(m.timestamp);
-  return `[${dt.toISOString().substring(0, 16).replace('T', ' ')}] User: ${m.text}`;
+  return `User: ${m.text}`;
 }).join('\n\n');
 
 fs.writeFileSync(OUTPUT_FILE, formattedOutput, 'utf-8');

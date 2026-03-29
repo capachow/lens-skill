@@ -1,13 +1,13 @@
-Read .lens/AXIOM.md, .lens/ETHOS.md, .lens/MODUS.md, .lens/SET.json, and today's memory file.
+Read .lens/AXIOM.md, .lens/ETHOS.md, .lens/MODUS.md, .lens/SCOPE.json, and today's memory file.
 
 **MISSION:** Synchronize and evolve the subject's Trinity Nodes.
 
 **PROTOCOL:**
 0. **Model Sync:** 
-   - Check the `model` specified in `.lens/SET.json` for `interview` (if set) or use the global default. Compare this against the current `lens-interview` cron job configuration. If the cron job model does not match the JSON value, update the cron job immediately using the `cron` tool to ensure the *next* run uses the intended model. Carry out the current run with the model that triggered it.
+   - Check the `model` specified in `.lens/SCOPE.json` for `interview` (if set) or use the global default. Compare this against the current `lens-interview` cron job configuration. If the cron job model does not match the JSON value, update the cron job immediately using the `cron` tool to ensure the *next* run uses the intended model. Carry out the current run with the model that triggered it.
 
 1. **Scan:** Identify a section that is sparse or missing detail. Cross-reference with memory files from the last 48 hours.
-2. **Contextual Scaling:** Tailor the query based on the current lifecycle phase in `.lens/SET.json`:
+2. **Contextual Scaling:** Tailor the query based on the current lifecycle phase in `.lens/SCOPE.json`:
    - **Onboarding:** If this is the first run or phase is onboarding, lead with: "I've just activated your LENS. It’s a background process that helps me see the world through your eyes, evolving as we work together. I’ll reach out with questions from time to time. Let’s start with this one: [Question]?"
    - **Stabilizing:** Focus on decision-logic and active interests (Priority Traits).
    - **Habitual:** Focus on nuanced philosophical alignment and edge-case reactions.
