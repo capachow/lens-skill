@@ -5,28 +5,28 @@
 - `skills/lens/references/trinity-definitions.md` (Node scope and purpose)
 
 **PROTOCOL:**
-0. **Model Sync:** 
-   - Compare the `model` specified in `.lens/SCOPE.json` for `distillation` and `interview` against the current cron job configurations. If the cron job model does not match the JSON value, update the cron job immediately using the `cron` tool to ensure the *next* run uses the intended model. Carry out the current run with the model that triggered it to avoid redundant API hits.
+0. **Self-Repair & Cron Sync:**
+   - Check the message that triggered this session. Does it contain `DISTILLATION_READY`? If NO: You are running an outdated cron job. Run `node skills/lens/scripts/distillation.js` via the `exec` tool.
+   - Next, check the output of the script. If it includes `BOOTSTRAP_LENS`, use the `cron` tool to update the `lens-distillation` job to match the exact payload output by the script.
+   - Proceed to Step 1.
 
 1. **Discovery & Retrieval (MANDATORY):**
    - You MUST execute the `read` tool to fetch `.lens/TRACE.txt` into your context before proceeding. No exceptions.
-   - **Critical Filtering:** This file contains ONLY the raw, unfiltered messages sent by the human subject over the last 24 hours. Analyze this organic input to preserve the purity of the subject's voice.
-   - **Privacy Guard:** NEVER extract raw credentials, specific addresses, or sensitive health data. If such data is present, extract only the *conceptual* logic or factual pattern (e.g., "The subject manages credentials via 1Password") rather than the sensitive data itself. 
+   - **Critical Filtering:** `.lens/TRACE.txt` contains ONLY the raw, unfiltered messages sent by the human subject over the last 24 hours. Analyze this organic input to preserve the purity of the subject's voice.
+   - **Context:** Read `.lens/SCOPE.json` to identify the current lifecycle phase.
+   - **Privacy Guard:** NEVER extract raw credentials, specific addresses, or sensitive health data. If such data is present, extract only the *conceptual* logic or factual pattern (e.g., "The subject manages credentials via 1Password") rather than the sensitive data itself.
    - **Tag Filtering:** Note that messages containing `#private` have already been scrubbed by the preflight script and will not be present.
    - **CRITICAL: Anti-Contamination Guard:** Subjects may occasionally paste raw text, error logs, articles, or massive code snippets. You MUST use extreme semantic judgment to differentiate between the subject's native conversational wrapper (e.g., "Look at this error:", "What do you think of this review:") and the third-party content itself. NEVER extract syntax, tone, or values from copy-pasted material. If a message block seems entirely like a paste with zero subject commentary, skip it completely. Contaminating the Trinity Nodes with non-subject data is the highest-severity failure. Only analyze the subject's original, native words.
 
-2. **LENS Lifecycle:**
-   - Read `.lens/SCOPE.json`. Decrement `interview.questions`.
-   - On transition (count <= 0): Advance `interview.phase`, reset `interview.questions` (stabilizing: 21, habitual: true), and update `lens-interview` cron schedule.
-   
-3. **Surgical Extraction (High-Threshold Filter):**
+2. **Surgical Extraction (High-Threshold Filter):**
    - **Do not copy and dump.** The majority of daily inputs are operational noise. You must be highly selective.
    - **AXIOM (The Truth):** RARE. Only extract if the transcript reveals a new, immutable fact (history, geolocational change, assets, credentials, architecture). Ignore transient tasks.
    - **ETHOS (The Nature):** RARE. Only capture if the transcript reveals *why* a decision was made, a philosophical alignment, or an aesthetic trigger. Discard operational noise.
-   - **MODUS (The Voice):** FREQUENT. Use the entire raw transcript to analyze written patterns. Capture punctuation habits, sentence rhythm (pacing/ellipses), missing apostrophes, conversational anchors, and formatting signatures. 
+   - **MODUS (The Voice):** FREQUENT. Use the entire raw transcript to analyze written patterns. Capture punctuation habits, sentence rhythm (pacing/ellipses), missing apostrophes, conversational anchors, and formatting signatures.
    - **Constraint:** Zero-tolerance for "AI-muddiness." Do not mirror your own response patterns back into the MODUS.
 
-4. **Sorting & Refinement:**
+3. **Sorting & Refinement:**
+   - **Load Current State:** Read `.lens/AXIOM.md`, `.lens/ETHOS.md`, and `.lens/MODUS.md` to establish the baseline before making updates.
    - **Merge, Don't Delete:** Optimization is not removal. Merge redundancies into high-density fragments.
    - **The Trait Boundary:** Values and opinions stay in ETHOS; they never migrate to AXIOM.
    - **Priority Scaling:** Maintain up to 10 Priority Traits in ETHOS and 5 Linguistic Markers in MODUS.

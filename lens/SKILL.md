@@ -5,10 +5,10 @@ metadata:
   {
     "openclaw": {
       "emoji": "🧐",
-      "requires": { 
+      "requires": {
         "bins": ["node"],
         "files": [".lens/AXIOM.md", ".lens/ETHOS.md", ".lens/MODUS.md", ".lens/SCOPE.json", ".lens/TRACE.txt", "~/.openclaw/agents/main/sessions/*.jsonl"],
-        "env": ["HOME"]
+        "env": ["HOME", "OPENCLAW_CRON_LIST"]
       }
     }
   }
@@ -32,7 +32,7 @@ The subject's identity is defined by three files located in the `.lens/` directo
 
 ## Onboarding Protocol (First Run)
 
-If the `.lens/` directory or Trinity Nodes do not exist, run `skills/lens/scripts/bootstrap.js` via the `exec` tool. It natively creates the directories, seeds the templates, and registers the daily `lens-interview` and `lens-distillation` cron schedules.
+If the `.lens/` directory or Trinity Nodes do not exist, run `skills/lens/scripts/bootstrap.js` via the `exec` tool. It natively creates the directories, seeds the templates, and outputs the `lens-interview` and `lens-distillation` cron job configurations for registration via the `cron` tool.
 
 ## Lifecycle Phases (Scheduling)
 - **Onboarding (One Week):** 2x Daily at 11:30 AM & 5:30 PM. Focus: Core Data Acquisition.
