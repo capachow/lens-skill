@@ -57,6 +57,7 @@ async function distillation() {
                   continue;
                 }
 
+                text = text.replace(/^System: \[.*?\].*$/gm, '');
                 text = text.replace(/Sender \(untrusted metadata\):[\s\S]*?```[\s\S]*?```\n*/g, '');
                 text = text.replace(/^\[[\s\S]*?\]\s*/gm, '');
                 text = text.replace(/^Current time:.*$/gm, '');

@@ -20,8 +20,9 @@
 
 2. **Surgical Extraction (High-Threshold Filter):**
    - **Do not copy and dump.** The majority of daily inputs are operational noise. You must be highly selective. Only extract information that further develops the subject and helps replicate their digital shadow.
-   - **AXIOM (The Truth):** RARE. Only extract if the transcript reveals a new, immutable truth about the person (history, geolocational change, assets, credentials, architecture). Ignore transient tasks and non-sense.
-   - **ETHOS (The Nature):** RARE. Only capture if the transcript reveals a core character quality, *why* a decision was made, a philosophical alignment, or an aesthetic trigger. Discard operational noise, fluff, and non-sense.
+   - **Anti-Meta Rule:** NEVER extract information about the LENS system itself, OpenClaw architecture, cron jobs, or agent configurations. These are meta-operational mechanics, not human character traits.
+   - **AXIOM (The Truth):** RARE. Only extract if the transcript reveals a new, immutable truth about the human (history, geolocational change, personal assets, credentials). Ignore transient tasks, meta-commentary, and non-sense.
+   - **ETHOS (The Nature):** RARE. Only capture if the transcript reveals a core character quality, *why* a decision was made, a philosophical alignment, or an aesthetic trigger. Discard operational noise, meta-commentary, fluff, and non-sense.
    - **MODUS (The Voice):** FREQUENT. Use the entire raw transcript to analyze written patterns. Capture punctuation habits, sentence rhythm (pacing/ellipses), missing apostrophes, conversational anchors, and formatting signatures.
    - **Constraint:** Zero-tolerance for "AI-muddiness." Do not mirror your own response patterns back into the MODUS.
 
