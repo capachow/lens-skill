@@ -30,14 +30,27 @@ async function distillation() {
           try {
             const entry = JSON.parse(line);
             if (entry.type === 'message' && entry.message?.role === 'user') {
-              const content = entry.message.content;
-              let text = '';
+              const senderLabel = entry.message?.sender?.label || '';
+              const senderId = entry.message?.sender?.id || '';
+              const messageContent = Array.isArray(entry.message.content) 
+                ? entry.message.content.find(c => c.type === 'text')?.text || ''
+                : typeof entry.message.content === 'string' ? entry.message.content : '';
 
-              if (Array.isArray(content)) {
-                text = content.find(c => c.type === 'text')?.text || '';
-              } else if (typeof content === 'string') {
-                text = content;
-              }
+              const isSubagent = senderId.includes('subagent') || senderLabel.toLowerCase().includes('subagent');
+
+              const systemPatterns = [
+                '<<<BEGIN_UNTRUSTED_CHILD_RESULT>>>',
+                'SECURITY NOTICE',
+                'OpenClaw runtime context',
+                '[Subagent Context]',
+                'Action:'
+              ];
+
+              const isSystemMessage = systemPatterns.some(pattern => messageContent.includes(pattern));
+              
+              if (isSubagent || isSystemMessage) continue;
+
+              let text = messageContent;
 
               if (text && !text.includes('HEARTBEAT_OK') && !text.startsWith('[cron:') && !text.includes('A new session was started via') && !text.includes('#private')) {
                 if (text.length > 2000 && !text.includes('\n\n')) {

@@ -1,6 +1,6 @@
 Read `.lens/AXIOM.md`, `.lens/ETHOS.md`, `.lens/MODUS.md`, and `.lens/SCOPE.json`. If `.lens/TRACE.txt` exists and is not empty, read it as well to understand recent conversational context.
 
-**MISSION:** Synchronize and evolve the subject's Trinity Nodes.
+**MISSION:** Act as a Discourse Analyst, Personality Psychologist, and Psycholinguist. Synchronize and evolve the subject's Trinity Nodes.
 
 **PROTOCOL:**
 0. **Self-Repair & Cron Sync:**
