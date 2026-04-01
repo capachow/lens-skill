@@ -9,74 +9,68 @@ const isMain = process.argv[1] === fileURLToPath(import.meta.url);
 
 async function migrate(action, scope) {
   const lensDir = path.join(process.cwd(), '.lens');
-  const scopePath = path.join(lensDir, 'SCOPE.json');
 
   if (action === 'paths') {
-    const movePaths = [
-      { old: path.join(lensDir, 'SET.json'), new: scopePath }
+    const backupPaths = [
+      { old: path.join(lensDir, 'AXIOM.md'), bak: 'axiom.md.bak' },
+      { old: path.join(lensDir, 'ETHOS.md'), bak: 'ethos.md.bak' },
+      { old: path.join(lensDir, 'MODUS.md'), bak: 'modus.md.bak' },
+      { old: path.join(lensDir, 'SET.json'), bak: 'set.json.bak' },
+      { old: path.join(__dirname, 'transcripts.txt'), bak: 'transcripts.txt.bak.1' },
+      { old: path.join(lensDir, 'transcripts.txt'), bak: 'transcripts.txt.bak.2' }
     ];
-    movePaths.forEach(movePath => {
-      if (fs.existsSync(movePath.old)) fs.renameSync(movePath.old, movePath.new);
+    backupPaths.forEach(backupPath => {
+      if (fs.existsSync(backupPath.old)) {
+        fs.renameSync(backupPath.old, path.join(lensDir, backupPath.bak));
+      }
     });
 
-    const removePaths = [
-      path.join(__dirname, 'transcripts.txt'),
-      path.join(lensDir, 'transcripts.txt'),
-      path.join(process.cwd(), 'transcripts.txt')
+    const createPaths = [
+      { new: path.join(lensDir, 'AXIOM.yaml'), bak: 'axiom.md.bak' },
+      { new: path.join(lensDir, 'ETHOS.yaml'), bak: 'ethos.md.bak' },
+      { new: path.join(lensDir, 'MODUS.yaml'), bak: 'modus.md.bak' },
+      { new: path.join(lensDir, 'SCOPE.json'), bak: 'set.json.bak' }
     ];
-    removePaths.forEach(removePath => {
-      if (fs.existsSync(removePath)) fs.unlinkSync(removePath);
-    });
+    createPaths.forEach(createPath => {
+      if (!fs.existsSync(createPath.new)) {
+        const baseName = path.parse(createPath.new).name;
 
-    const remakePaths = [
-      path.join(lensDir, 'AXIOM.yaml'),
-      path.join(lensDir, 'ETHOS.yaml'),
-      path.join(lensDir, 'MODUS.yaml')
-    ];
-    remakePaths.forEach(remakePath => {
-      if (!fs.existsSync(remakePath)) {
-        const baseName = path.basename(remakePath, '.yaml');
-        const mdPath = path.join(lensDir, `${baseName}.md`);
-        if (fs.existsSync(mdPath)) {
-          const instruction = `title: "MIGRATION REQUIRED - ${baseName}"\nSYSTEM_ALERT: "CRITICAL INSTRUCTION: The LENS system has upgraded to YAML. Before continuing with your primary mission, you MUST read the legacy file at .lens/${baseName}.md. Translate its entire contents into a highly structured, deeply nested YAML format (preserving all user data), and completely overwrite THIS file (.lens/${baseName}.yaml) with the new structure. After completing this migration, you may delete the old .md file and proceed with your task."\n`;
-          fs.writeFileSync(remakePath, instruction);
+        if (baseName === 'SCOPE') {
+          fs.renameSync(path.join(lensDir, createPath.bak), createPath.new);
+        } else {
+          fs.writeFileSync(createPath.new, `title: "MIGRATION REQUIRED - ${baseName}"\nSYSTEM_ALERT: "CRITICAL INSTRUCTION: The LENS system has upgraded to YAML. Before continuing with your primary mission, you MUST read the legacy file at .lens/${createPath.bak}. Translate its entire contents into a highly structured, deeply nested YAML format (preserving all user data), and completely overwrite THIS file (.lens/${baseName}.yaml) with the new structure."\n`);
         }
       }
     });
   }
 
   if (action === 'scope') {
-    if (!fs.existsSync(scopePath)) {
-      const axiomOldPath = path.join(lensDir, 'AXIOM.md');
+    const setBakPath = path.join(lensDir, 'set.json.bak');
+    const axiomBakPath = path.join(lensDir, 'axiom.md.bak');
 
-      if (fs.existsSync(axiomOldPath)) {
-        const axiom = fs.readFileSync(axiomOldPath, 'utf8');
-        if (axiom.includes('Interview Phase:')) {
-          const phaseMatch = axiom.match(/Interview Phase: (\d+)-(\d+)-(\d+)/);
-          if (phaseMatch) {
-            const [_, init, stab, hab] = phaseMatch.map(Number);
-            if (init > 0) {
-              scope.interview.phase = "onboarding";
-              scope.interview.questions = init;
-            } else if (stab > 0) {
-              scope.interview.phase = "stabilizing";
-              scope.interview.questions = stab;
-            } else {
-              scope.interview.phase = "habitual";
-              scope.interview.questions = true;
-            }
+    if (!fs.existsSync(setBakPath) && fs.existsSync(axiomBakPath)) {
+      const axiomBak = fs.readFileSync(axiomBakPath, 'utf8');
+
+      if (axiomBak.includes('Interview Phase:')) {
+        const phaseMatch = axiomBak.match(/Interview Phase: (\d+)-(\d+)-(\d+)/);
+        if (phaseMatch) {
+          const [_, init, stab, hab] = phaseMatch.map(Number);
+          if (init > 0) {
+            scope.interview.phase = "onboarding";
+            scope.interview.questions = init;
+          } else if (stab > 0) {
+            scope.interview.phase = "stabilizing";
+            scope.interview.questions = stab;
+          } else {
+            scope.interview.phase = "habitual";
+            scope.interview.questions = true;
           }
         }
+      }
 
-        if (axiom.includes('Installation Date:')) {
-          const dateMatch = axiom.match(/Installation Date: (\d{4}-\d{2}-\d{2})/);
-          if (dateMatch) scope.meta.installed = dateMatch[1];
-        }
-
-        if (axiom.includes('## LENS Lifecycle')) {
-          const cleaned = axiom.replace(/## LENS Lifecycle\n(- (Interview Phase: \d+-\d+-\d+|Installation Date: \d{4}-\d{2}-\d{2})\n?)+/gm, '').replace(/\n\n\n+/g, '\n\n');
-          fs.writeFileSync(axiomOldPath, cleaned.trim() + '\n');
-        }
+      if (axiomBak.includes('Installation Date:')) {
+        const dateMatch = axiomBak.match(/Installation Date: (\d{4}-\d{2}-\d{2})/);
+        if (dateMatch) scope.meta.installed = dateMatch[1];
       }
     }
   }
