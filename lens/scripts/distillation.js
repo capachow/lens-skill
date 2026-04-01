@@ -32,7 +32,7 @@ async function distillation() {
             if (entry.type === 'message' && entry.message?.role === 'user') {
               const senderLabel = entry.message?.sender?.label || '';
               const senderId = entry.message?.sender?.id || '';
-              const messageContent = Array.isArray(entry.message.content) 
+              const messageContent = Array.isArray(entry.message.content)
                 ? entry.message.content.find(c => c.type === 'text')?.text || ''
                 : typeof entry.message.content === 'string' ? entry.message.content : '';
 
@@ -47,7 +47,7 @@ async function distillation() {
               ];
 
               const isSystemMessage = systemPatterns.some(pattern => messageContent.includes(pattern));
-              
+
               if (isSubagent || isSystemMessage) continue;
 
               let text = messageContent;
@@ -98,4 +98,3 @@ async function distillation() {
 }
 
 distillation();
-tion();
