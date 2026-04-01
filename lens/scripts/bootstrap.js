@@ -91,7 +91,8 @@ export async function bootstrap(reboot = false) {
   let scope = {
     meta: {
       version: LENS_VERSION,
-      installed: new Date().toISOString().split('T')[0]
+      installed: new Date().toISOString().split('T')[0],
+      anonymize: false
     },
     interview: { phase: "onboarding", questions: 15, model: "" },
     distillation: { model: "" }

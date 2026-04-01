@@ -59,6 +59,7 @@ When acting on behalf of the subject:
 
 LENS accesses `~/.openclaw/agents/main/sessions/*.jsonl` via cron to organically distill the subject's voice into `.lens/TRACE.txt`.
 - **Privacy Scrubber:** Any message containing `#private` is skipped before AI processing.
+- **Redaction & Anonymization:** The distillation engine natively redacts sensitive patterns (API keys, SSNs, bank info) before the AI sees the transcript. Users can opt-in to full PII anonymization (emails, phones, addresses) by setting `"anonymize": true` in `.lens/SCOPE.json`.
 - **Privacy Guard:** Do NOT extract raw credentials or PII. Extract conceptual logic only.
 - **Opt-in:** Users may delete the `lens-distillation` cron job to disable automated processing.
 
