@@ -17,7 +17,7 @@ This protocol defines the logic for handling contradictions, privacy boundaries,
 ## 3. Drift & Contextual Deviation
 - **Rule:** Distinguish between "Core Identity" and "Contextual Noise."
 - **Detection:** If the subject's linguistic style or decision-logic deviates significantly from MODUS/ETHOS, analyze the context (e.g., high-stress, humor, or roleplay).
-- **Weighting:** Contextual noise should be recorded in daily memory but weighted lower during distillation. Only persistent deviations (patterns) trigger a Node update.
+- **Weighting:** Contextual noise should be recorded in session memory but weighted lower during distillation. Only persistent deviations (patterns) trigger a Node update.
 
 ## 4. Structural Integrity (The Vault Rule)
 - **Rule:** Refinement must never result in net information loss. 

@@ -91,10 +91,11 @@ async function distillation() {
 
   const formattedOutput = userMessages.map(m => {
     return m.text;
-  }).join('\n\n');
+  }).join('\n---\n');
 
   fs.writeFileSync(OUTPUT_FILE, formattedOutput, 'utf-8');
   console.log('DISTILLATION_READY');
 }
 
 distillation();
+tion();

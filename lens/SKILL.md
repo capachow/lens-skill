@@ -7,7 +7,7 @@ metadata:
       "emoji": "🧐",
       "requires": {
         "bins": ["node"],
-        "files": [".lens/AXIOM.md", ".lens/ETHOS.md", ".lens/MODUS.md", ".lens/SCOPE.json", ".lens/TRACE.txt", "~/.openclaw/agents/main/sessions/*.jsonl"],
+        "files": [".lens/AXIOM.yaml", ".lens/ETHOS.yaml", ".lens/MODUS.yaml", ".lens/SCOPE.json", ".lens/TRACE.txt", "~/.openclaw/agents/main/sessions/*.jsonl"],
         "env": ["HOME", "OPENCLAW_CRON_LIST"]
       }
     }
@@ -22,9 +22,9 @@ Use LENS when you need your agent to see the world through your perspective. It 
 
 The subject's identity is defined by three files located in the `.lens/` directory:
 
-1.  **AXIOM: The Truth (What)** - My history and reality. This is the bedrock of facts that defines what I am.
-2.  **ETHOS: The Nature (Who)** - My values and character. This is the internal compass that defines who I am.
-3.  **MODUS: The Voice (How)** - My style and expression. This is the interface that defines how I am.
+1.  **`AXIOM.yaml`: The Truth (What)** - My history and reality. This is the bedrock of facts that defines what I am.
+2.  **`ETHOS.yaml`: The Nature (Who)** - My values and character. This is the internal compass that defines who I am.
+3.  **`MODUS.yaml`: The Voice (How)** - My style and expression. This is the interface that defines how I am.
 
 **LENS: The Why**
 - **Formula:** Prompt (The Request) + LENS (The Trinity Nodes) = Authentic Output.
