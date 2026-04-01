@@ -16,17 +16,17 @@ By observing interactions and distilling the essence of identity, the system mir
 
 Complexity is mapped into three distinct nodes. These anchors define the subject's identity through specific, immutable parameters.
 
-### 1. `AXIOM.md`: The Truth (What)
+### 1. `AXIOM.yaml`: The Truth (What)
 **History and reality form the Cognitive Bedrock.** Identity is grounded in the immutable facts of existence.
 
 > Chronology, Kinship, Assets, Professional Credentials, and Immutable History.
 
-### 2. `ETHOS.md`: The Nature (Who)
+### 2. `ETHOS.yaml`: The Nature (Who)
 **Values and character form the Internal Compass.** Identity is defined by how the world is weighed.
 
 > Decision-Logic, Aesthetic Triggers, Philosophical Alignment, and Priority Traits.
 
-### 3. `MODUS.md`: The Voice (How)
+### 3. `MODUS.yaml`: The Voice (How)
 **Style and expression form the Behavioral Interface.** Identity is rendered through the nuance of delivery.
 
 > Cadence Velocity, Punctuation Density, Lexical Gravity, Tone Temperature, and Linguistic Markers.
@@ -51,7 +51,7 @@ The LENS is not static; it is an evolving digital shadow.
 
 ## Structural Peace
 
-LENS utilizes three flat Markdown files and a single JSON state file instead of a complex vector store. This approach is lightweight, token-efficient, and human-readable. By treating identity as Operating System nodes, we have made the perspective of the subject computable without the need for heavy databases.
+LENS utilizes three flat YAML files and a single JSON state file instead of a complex vector store. This approach is lightweight, token-efficient, and human-readable. By treating identity as structured Operating System nodes, we have made the perspective of the subject computable without the need for heavy databases. YAML provides the perfect balance between structure for the engine and readability for the human.
 
 ## Privacy & Security
 
