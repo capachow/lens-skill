@@ -7,6 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function redact(text, anonymized = false) {
   const securityPatterns = [
+    { name: 'URL', regex: /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi },
     { name: 'PRIVATE_KEY', regex: /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/g },
     { name: 'PASSWORD', regex: /\b(?:password|passwd|secret|token|bearer)(?:\s+(?:is|was))?\s*[:=]\s*["']?[^\s,;]+["']?/gi },
     { name: 'API_ID_KEYS', regex: /\b(?=[a-zA-Z0-9._-]*\d)[a-zA-Z0-9._-]{16,}\b/g },
@@ -87,7 +88,17 @@ async function distillation() {
                 'SECURITY NOTICE',
                 'OpenClaw runtime context',
                 '[Subagent Context]',
-                'Action:'
+                'Action:',
+                'The previous agent run was aborted',
+                'An async command the user already approved',
+                'A scheduled reminder has been triggered',
+                'Pre-compaction memory flush',
+                'The following is an ephemeral message',
+                'oauth2/callback',
+                'oauth/callback',
+                'auth/callback',
+                'login/callback',
+                'oauth2callback'
               ];
 
               const isSystemMessage = systemPatterns.some(pattern => messageContent.includes(pattern));
