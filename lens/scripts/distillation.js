@@ -91,6 +91,7 @@ async function distillation() {
                 'Action:',
                 'The previous agent run was aborted',
                 'An async command the user already approved',
+                'An async command you ran earlier has completed.',
                 'A scheduled reminder has been triggered',
                 'Pre-compaction memory flush',
                 'The following is an ephemeral message',
@@ -112,7 +113,7 @@ async function distillation() {
                   continue;
                 }
 
-                text = text.replace(/^System: \[.*?\].*$/gm, '');
+                text = text.replace(/^System(?: \([^)]+\))?: \[.*?\].*$/gm, '');
                 text = text.replace(/Sender \(untrusted metadata\):[\s\S]*?```[\s\S]*?```\n*/g, '');
                 text = text.replace(/^\[[\s\S]*?\]\s*/gm, '');
                 text = text.replace(/^Current time:.*$/gm, '');
