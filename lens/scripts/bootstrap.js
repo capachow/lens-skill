@@ -76,13 +76,24 @@ async function migrate(action, scope) {
   }
 }
 
+function getUserTimezone() {
+  try {
+    const configPath = path.join(process.env.HOME, '.openclaw/openclaw.json');
+    if (fs.existsSync(configPath)) {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      return config.agents?.defaults?.userTimezone;
+    }
+  } catch (e) {}
+  return null;
+}
+
 export async function bootstrap(reboot = false) {
   const lensDir = path.join(process.cwd(), '.lens');
   if (!fs.existsSync(lensDir)) fs.mkdirSync(lensDir);
 
   migrate('paths');
 
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const timezone = getUserTimezone() || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   const axiomPath = path.join(lensDir, 'AXIOM.yaml');
   const ethosPath = path.join(lensDir, 'ETHOS.yaml');
   const modusPath = path.join(lensDir, 'MODUS.yaml');
