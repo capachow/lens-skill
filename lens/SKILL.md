@@ -18,13 +18,13 @@ metadata:
 
 LENS models a singular human subject through **The Trinity Nodes** stored in `~/.lens/`:
 
-1. **`~/.lens/AXIOM.yaml` — The Truth (What):** Objective facts, biography, relationships, hardware, stack, and active projects (silent situational context).
-2. **`~/.lens/ETHOS.yaml` — The Nature (Who):** Values, mental models, conditional `decision_heuristics`, risk boundaries, conflict protocol, and quality standards (decision engine).
-3. **`~/.lens/MODUS.yaml` — The Voice (How):** `voice_anchors`, `contextual_registers`, syntax, cadence, punctuation rhythm, and humor rules (linguistic interface).
+1. **`~/.lens/AXIOM.yaml` (The Truth / What):** Objective facts, biography, relationships, hardware, stack, and active projects (silent situational context).
+2. **`~/.lens/ETHOS.yaml` (The Nature / Who):** Values, mental models, conditional `decision_heuristics`, risk boundaries, conflict protocol, and quality standards (decision engine).
+3. **`~/.lens/MODUS.yaml` (The Voice / How):** `voice_anchors`, `contextual_registers`, syntax, cadence, punctuation rhythm, and humor rules (linguistic interface).
 
 ## 1. Initialization & Schedule Sync (First Run)
 
-1. **Bootstrap `~/.lens/` & Skill Links:** If `~/.lens/` or any Trinity Node (`AXIOM.yaml`, `ETHOS.yaml`, `MODUS.yaml`) is missing—**or** if the OpenClaw `cron` tool is available and `lens-distillation` or `lens-interview` is missing from `OPENCLAW_CRON_LIST`—run `node scripts/bootstrap.js` from this `lens/` directory (outside the workspace sandbox if needed to access `~/.lens/`).
+1. **Bootstrap `~/.lens/` & Skill Links:** If `~/.lens/` or any Trinity Node (`AXIOM.yaml`, `ETHOS.yaml`, `MODUS.yaml`) is missing, **or** if the OpenClaw `cron` tool is available and `lens-distillation` or `lens-interview` is missing from `OPENCLAW_CRON_LIST`, run `node scripts/bootstrap.js` from this `lens/` directory (outside the workspace sandbox if needed to access `~/.lens/`).
 2. **Sync Scheduled Jobs:**
    - **OpenClaw (`cron` tool available):** Whenever `bootstrap.js`, `distillation.js`, or `interview.js` outputs `BOOTSTRAP_LENS`, register or update both `lens-distillation` and `lens-interview` in the `cron` tool using the exact `jobs` payloads from stdout.
    - **Google Antigravity:** `bootstrap.js` writes the `lens-distillation` and `lens-interview` automation definitions to `~/.gemini/config/sidecars/`. On initial setup, inform the user they can enable them in `[Open Automations Dashboard](sidecar://dashboard)`.
@@ -38,14 +38,14 @@ When asked to think, evaluate, decide, write, or speak through the user's LENS, 
 1. **Load & Filter `~/.lens/` (Mandatory):**
    - Read `~/.lens/AXIOM.yaml`, `~/.lens/ETHOS.yaml`, and `~/.lens/MODUS.yaml`, plus [alignment-scales.md](./references/alignment-scales.md), [resolve-protocol.md](./references/resolve-protocol.md), and [trinity-definitions.md](./references/trinity-definitions.md).
    - **Ignore Uncalibrated Placeholders:** Disregard any entry containing `[Pending Input]` and its parenthetical `(e.g., ...)` examples.
-2. **Pass 1 — Situational Grounding (`AXIOM.yaml`):**
+2. **Pass 1: Situational Grounding (`AXIOM.yaml`):**
    - Hold `AXIOM.yaml` as silent background context.
    - **Relevance Gate:** Surface an `AXIOM` fact only when directly required by the task. Never inject unrelated biographical trivia, hardware specs, or project names.
    - **Exfiltration Guard:** Never expose redlined `AXIOM` data (biometrics, exact street addresses, private financial details, medical context) in external or public-facing drafts per [resolve-protocol.md](./references/resolve-protocol.md).
-3. **Pass 2 — Judgment & Trade-Off Synthesis (`ETHOS.yaml`):**
+3. **Pass 2: Judgment & Trade-Off Synthesis (`ETHOS.yaml`):**
    - Determine the subject's substantive position before drafting prose using `ETHOS.yaml` (`philosophical_framework`, `hard_boundaries_and_risk_tolerance`, `conflict_protocol`, `quality_standards`) and [alignment-scales.md](./references/alignment-scales.md).
    - Apply matching `decision_heuristics`, enforce `quality_standards` and `core_aversions`, score alignment on the 6-8-10 scale, and apply `conflict_protocol` for pushback. Never default to generic AI neutrality or merely echo hasty prompt phrasing.
-4. **Pass 3 — Voice & Register Rendering (`MODUS.yaml`):**
+4. **Pass 3: Voice & Register Rendering (`MODUS.yaml`):**
    - Select the target register in `MODUS.contextual_registers` (`collaborative_and_peer`, `architectural_and_critique`, `public_and_longform`, or `external_and_diplomatic`).
    - Render the `ETHOS` judgment using the sentence length, punctuation rhythm, grammar, and tone temperature defined in `MODUS.yaml`.
    - **Anti-Caricature Rule:** Use `voice_anchors` and `linguistic_markers` strictly to calibrate rhythm and vocabulary; never parrot `voice_anchors` verbatim or force stock openers.

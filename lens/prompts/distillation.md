@@ -18,9 +18,9 @@
 
 2. **Portability Gate & Node Extraction:**
    - **Portability Test:** Retain a signal only if it would remain true if the subject switched projects, repositories, or servers tomorrow. Discard transient task instructions, cron tweaks, and meta-discussions about LENS.
-   - **`AXIOM.yaml` (The Truth — What):** RARE. Extract only enduring objective facts (biography, kinship, core hardware/software stack, career history, major personal projects, domestic context).
-   - **`ETHOS.yaml` (The Nature — Who):** RARE. Extract transferable mental models, conditional trade-off rules (`when X conflicts with Y, prioritize X`), hard boundaries, conflict resolution habits, cultural taste logic, and quality standards.
-   - **`MODUS.yaml` (The Voice — How):** Extract sentence rhythm, punctuation habits, `contextual_registers` (`collaborative_and_peer`, `architectural_and_critique`, `public_and_longform`, `external_and_diplomatic`), rhetorical pacing, humor triggers, and 1–2 sentence verbatim `voice_anchors` demonstrating the subject's sharpest natural writing. Never copy assistant phrasing into `MODUS.yaml`.
+   - **`AXIOM.yaml` (The Truth / What):** RARE. Extract only enduring objective facts (biography, kinship, core hardware/software stack, career history, major personal projects, domestic context).
+   - **`ETHOS.yaml` (The Nature / Who):** RARE. Extract transferable mental models, conditional trade-off rules (`when X conflicts with Y, prioritize X`), hard boundaries, conflict resolution habits, cultural taste logic, and quality standards.
+   - **`MODUS.yaml` (The Voice / How):** Extract sentence rhythm, punctuation habits, `contextual_registers` (`collaborative_and_peer`, `architectural_and_critique`, `public_and_longform`, `external_and_diplomatic`), rhetorical pacing, humor triggers, and 1-2 sentence verbatim `voice_anchors` demonstrating the subject's sharpest natural writing. Never copy assistant phrasing into `MODUS.yaml`.
 
 3. **Schema Integrity & Surgical Update:**
    - Read `~/.lens/AXIOM.yaml`, `~/.lens/ETHOS.yaml`, and `~/.lens/MODUS.yaml`.

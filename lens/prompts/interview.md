@@ -12,7 +12,7 @@ Read `~/.lens/AXIOM.yaml`, `~/.lens/ETHOS.yaml`, `~/.lens/MODUS.yaml`, and `~/.l
    - **`onboarding`:** Target foundational facts (`AXIOM`) and core operational preferences. On the very first onboarding question (`questions: 14` after decrement, or all nodes uncalibrated), prefix briefly: *"I've activated your LENS so I can learn how you think and write as we work together. Let's start with a quick one: [Question]"*
    - **`stabilizing`:** Target `ETHOS` trade-off rules (`decision_heuristics`, `conflict_protocol`, `quality_standards`) via a realistic "X vs. Y" dilemma.
    - **`habitual`:** Target nuanced edge cases, aesthetic/taste distinctions, or how the subject would phrase a response to a specific scenario (`ETHOS` + `MODUS`).
-3. **Question Formulation:** Draft **ONE** specific question (1–2 sentences maximum). Never ask abstract self-report questions; always frame a concrete scenario, trade-off, or forced choice:
+3. **Question Formulation:** Draft **ONE** specific question (1-2 sentences maximum). Never ask abstract self-report questions; always frame a concrete scenario, trade-off, or forced choice:
    - *Invalid (Abstract):* "How do you handle conflict or disagreements on a team?"
    - *Valid (Concrete Trade-Off):* "If a collaborator ships code that works but violates your structural standards right before a deadline, do you merge it and clean it up later or block it on the spot?"
 4. **Delivery:** Output the question directly in a natural, conversational tone calibrated to `MODUS.yaml` (direct, zero servility, no bullet points).
