@@ -2,6 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import zlib from 'zlib';
+import { execFileSync } from 'child_process';
 import { LENS_DIR, checkAccess, preflight } from './bootstrap.js';
 
 const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
@@ -17,6 +18,11 @@ const SYSTEM_PATTERNS = [
   'A scheduled reminder has been triggered',
   'Pre-compaction memory flush',
   'The following is an ephemeral message',
+  'You are the autonomous agent assigned to this task',
+  'Do NOT ask for human confirmation',
+  'reply with ONLY: NO_REPLY',
+  'EXISTING BOARD TASKS',
+  '=== EMAIL #',
   'DISTILLATION_READY',
   'INTERVIEW_READY',
   'BOOTSTRAP_LENS',
@@ -26,6 +32,16 @@ const SYSTEM_PATTERNS = [
   'auth/callback',
   'login/callback',
   'oauth2callback'
+];
+
+const CANONICAL_LENS_FILES = [
+  'AXIOM.yaml',
+  'ETHOS.yaml',
+  'MODUS.yaml',
+  'SCOPE.json',
+  'TRACE.txt',
+  'README.md',
+  '.gitignore'
 ];
 
 function redact(text, anonymized = false) {
@@ -62,7 +78,155 @@ function redact(text, anonymized = false) {
   return cleaned;
 }
 
-function cleanUserText(rawText) {
+function getSubjectNameTokens() {
+  const tokens = new Set();
+  const axiomPath = path.join(LENS_DIR, 'AXIOM.yaml');
+  if (!fs.existsSync(axiomPath)) return tokens;
+  try {
+    const content = fs.readFileSync(axiomPath, 'utf8');
+    const match = content.match(/^\s*name:\s*["']?([^"'\r\n]+)["']?/m);
+    if (match && match[1]) {
+      const rawName = match[1].trim();
+      if (rawName && rawName.toLowerCase() !== 'unknown' && !rawName.includes('Pending Input')) {
+        for (const part of rawName.split(/\s+/)) {
+          const clean = part.replace(/[^a-zA-Z]/g, '').toLowerCase();
+          if (clean.length >= 2) {
+            tokens.add(clean);
+            if (clean.length >= 5) {
+              tokens.add(clean.slice(0, 4));
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {}
+  return tokens;
+}
+
+function stripUnfencedJsonBlocks(text) {
+  const lines = text.split('\n');
+  const kept = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const trimmed = lines[i].trim();
+    if (/^[\[{]\s*$/.test(trimmed)) {
+      let depth = 0;
+      let inString = false;
+      let escaped = false;
+      let j = i;
+      let hasJsonKey = false;
+
+      while (j < lines.length) {
+        const line = lines[j];
+        if (/"[^"\n]+"\s*:/.test(line)) hasJsonKey = true;
+        for (let c = 0; c < line.length; c++) {
+          const ch = line[c];
+          if (escaped) {
+            escaped = false;
+            continue;
+          }
+          if (ch === '\\' && inString) {
+            escaped = true;
+            continue;
+          }
+          if (ch === '"') {
+            inString = !inString;
+            continue;
+          }
+          if (!inString) {
+            if (ch === '{' || ch === '[') depth++;
+            else if (ch === '}' || ch === ']') depth--;
+          }
+        }
+        j++;
+        if (depth <= 0) break;
+      }
+
+      if (j - i >= 3 && hasJsonKey) {
+        i = j;
+        continue;
+      }
+    }
+
+    if (/^\s*(?:[\[{}\],]+|"[^"\n]+"\s*:\s*(?:["\d\[{]|true\b|false\b|null\b).*)\s*$/.test(lines[i])) {
+      i++;
+      continue;
+    }
+
+    kept.push(lines[i]);
+    i++;
+  }
+
+  return kept.join('\n');
+}
+
+function stripPasteLeadInBlocks(text) {
+  const paragraphs = text.split(/\r?\n\s*\r?\n/);
+  if (paragraphs.length <= 1) return text;
+
+  const kept = [];
+  let i = 0;
+  const leadInRegex = /(?:because I |just |still |she |he |they )?(?:got|received|sent me|asked me|saw|pasted|shared|forwarded)\s+this(?:\s+now)?(?:\.{2,}|:)\s*$/i;
+
+  while (i < paragraphs.length) {
+    const para = paragraphs[i].trim();
+    if (leadInRegex.test(para) && i + 1 < paragraphs.length) {
+      kept.push(paragraphs[i]);
+      i++;
+      while (i < paragraphs.length) {
+        if (/^---+$/.test(paragraphs[i].trim())) {
+          i++;
+          break;
+        }
+        i++;
+      }
+      continue;
+    }
+    kept.push(paragraphs[i]);
+    i++;
+  }
+
+  return kept.join('\n\n');
+}
+
+function isContaminatedParagraph(para, subjectNames) {
+  const trimmed = para.trim();
+  if (!trimmed) return true;
+  if (/^---+$/.test(trimmed)) return true;
+  if (trimmed.length > 2000) return true;
+
+  if (/^[A-Z][A-Za-z .'-]{1,40}\s+\[?\d{1,2}:\d{2}\s*(?:AM|PM)\]?\s*(?:\r?\n|$)/.test(trimmed)) {
+    return true;
+  }
+
+  const mentionStart = trimmed.match(/^\[?@([A-Za-z0-9_.\s-]+)\]?(?:\([^)]*\))?[,:]?\s+/);
+  if (mentionStart && subjectNames.size > 0) {
+    const mentionedParts = mentionStart[1].toLowerCase().split(/\s+/);
+    if (mentionedParts.some(p => subjectNames.has(p))) {
+      return true;
+    }
+  }
+
+  if (/^\s*\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}/m.test(trimmed)) return true;
+  if (/##\[(?:group|endgroup|error|warning|command)\]/.test(trimmed)) return true;
+  if (/^\s+at\s+\S+\s+\(.*:\d+:\d+\)/m.test(trimmed)) return true;
+  if (/^(?:diff --git |@@\s+-\d+,\d+\s+\+\d+,\d+\s+@@)/m.test(trimmed)) return true;
+
+  const headerMatches = trimmed.match(/^(?:Credentials|Degrees?|Education|Experience|Certifications|Licensure|Qualifications|Specialties|From|To|Subject|Sent|Date):\s*/gm);
+  if (headerMatches && headerMatches.length >= 2) return true;
+
+  if (/^(?:Meet|About)\s+[A-Z][a-z]+(?:\s+[–—-]\s+.*)?$/m.test(trimmed)) return true;
+
+  const selfIntro = trimmed.match(/\bMy name is ([A-Z][a-z]+)\b/);
+  if (selfIntro && subjectNames.size > 0 && !subjectNames.has(selfIntro[1].toLowerCase())) {
+    return true;
+  }
+
+  return false;
+}
+
+function cleanUserText(rawText, subjectNames = new Set(), automatedPrompts = new Set()) {
   if (!rawText || typeof rawText !== 'string') return '';
   if (rawText.includes('HEARTBEAT_OK') || rawText.startsWith('[cron:') || rawText.includes('A new session was started via')) {
     return '';
@@ -75,26 +239,84 @@ function cleanUserText(rawText) {
   text = text.replace(/<ide_opened_file>[\s\S]*?<\/ide_opened_file>/g, '');
   text = text.replace(/<ide_selection>[\s\S]*?<\/ide_selection>/g, '');
   text = text.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '');
-  text = text.replace(/<command-name>[\s\S]*?<\/command-name>/g, '');
-  text = text.replace(/<command-message>[\s\S]*?<\/command-message>/g, '');
-  text = text.replace(/<command-args>[\s\S]*?<\/command-args>/g, '');
   text = text.replace(/<local-command-stdout>[\s\S]*?<\/local-command-stdout>/g, '');
   text = text.replace(/<local-command-caveat>[\s\S]*?<\/local-command-caveat>/g, '');
+  text = text.replace(/<task-notification>[\s\S]*?<\/task-notification>/g, '');
+  text = text.replace(/<user-prompt-submit-hook>[\s\S]*?<\/user-prompt-submit-hook>/g, '');
+  text = text.replace(/<bash-input>[\s\S]*?<\/bash-input>/g, '');
+  text = text.replace(/<bash-stdout>[\s\S]*?<\/bash-stdout>/g, '');
+  text = text.replace(/<bash-stderr>[\s\S]*?<\/bash-stderr>/g, '');
+  text = text.replace(/<ultraplan>[\s\S]*?<\/ultraplan>/g, '');
+  text = text.replace(/<skill>[\s\S]*?<\/skill>/g, '');
+  text = text.replace(/<subagent_notification>[\s\S]*?<\/subagent_notification>/g, '');
+  text = text.replace(/<turn_aborted>[\s\S]*?<\/turn_aborted>/g, '');
+  text = text.replace(/<system_instruction>[\s\S]*?<\/system_instruction>/g, '');
+
+  if (text.includes('<command-name>')) {
+    const cmdNameMatch = text.match(/<command-name>\s*([\s\S]*?)\s*<\/command-name>/);
+    const cmdArgsMatch = text.match(/<command-args>\s*([\s\S]*?)\s*<\/command-args>/);
+    const cmdName = cmdNameMatch ? cmdNameMatch[1].trim() : '';
+    const cmdArgs = cmdArgsMatch ? cmdArgsMatch[1].trim() : '';
+    if (!cmdArgs || /^\/?(?:clear|compact|login|logout|model|resume|mcp|init|config|doctor|cost|status|permissions|terminal-setup|vim|memory|help|quit|exit)$/i.test(cmdName)) {
+      return '';
+    }
+    text = cmdArgs;
+  } else {
+    text = text.replace(/<command-message>[\s\S]*?<\/command-message>/g, '');
+    text = text.replace(/<command-args>[\s\S]*?<\/command-args>/g, '');
+  }
 
   const userRequestMatch = text.match(/<USER_REQUEST>\s*([\s\S]*?)\s*<\/USER_REQUEST>/);
   if (userRequestMatch) {
     text = userRequestMatch[1];
   }
 
-  if (text.includes('#private') || SYSTEM_PATTERNS.some(pattern => text.includes(pattern))) {
+  const trimmedInitial = text.trim();
+  if (!trimmedInitial) return '';
+  if (automatedPrompts.has(trimmedInitial)) return '';
+
+  if (
+    trimmedInitial.startsWith('Base directory for this skill:') ||
+    trimmedInitial.startsWith('This session is being continued from a previous conversation') ||
+    trimmedInitial.startsWith('[Request interrupted by user')
+  ) {
     return '';
   }
 
-  if (text.length > 2000 && !text.includes('\n\n') && !text.includes('\r\n\r\n')) {
+  if (trimmedInitial.includes('#private') || SYSTEM_PATTERNS.some(pattern => trimmedInitial.includes(pattern))) {
     return '';
   }
 
-  text = text.replace(/^System(?: \([^)]+\))?: \[.*?\].*$/gm, '');
+  if (/^[A-Z][A-Za-z .'-]{1,40}\s+\[?\d{1,2}:\d{2}\s*(?:AM|PM)\]?\s*\r?\n/.test(trimmedInitial)) {
+    return '';
+  }
+
+  const salutationMatch = trimmedInitial.match(/^(?:Hi|Hello|Hey|Dear)\s+([A-Z][a-z]+)[,!:\r\n]/);
+  if (salutationMatch) {
+    const greeted = salutationMatch[1].toLowerCase();
+    if (
+      (subjectNames.size > 0 && subjectNames.has(greeted)) ||
+      /(?:Thank you!?|Thanks[,!]?|Best(?: regards)?[,!]?|Sincerely[,!]?|Regards[,!]?)\s*$/i.test(trimmedInitial)
+    ) {
+      return '';
+    }
+  }
+
+  if (/^(?:Meet|About)\s+[A-Z][a-z]+(?:\s+[–—-]\s+.*)?\s*\r?\n/.test(trimmedInitial)) {
+    return '';
+  }
+
+  const selfIntroMatch = trimmedInitial.match(/\bMy name is ([A-Z][a-z]+)\b/);
+  if (selfIntroMatch && subjectNames.size > 0 && !subjectNames.has(selfIntroMatch[1].toLowerCase())) {
+    return '';
+  }
+
+  const totalHeaders = trimmedInitial.match(/^(?:Credentials|Degrees?|Education|Experience|Certifications|Licensure|Qualifications|Specialties|From|To|Subject|Sent|Date):\s*/gm);
+  if (totalHeaders && totalHeaders.length >= 2) {
+    return '';
+  }
+
+  text = text.replace(/^System(?: \([^)]+\))?: \[.*?\][\s\S]*?(?=\r?\n\s*\r?\n|$)/gm, '');
   text = text.replace(/^Action:\s.*$/gm, '');
   text = text.replace(/Sender \(untrusted metadata\):[\s\S]*?```[\s\S]*?```\n*/g, '');
   text = text.replace(/^\[[^\r\n\]]*\]\s*/gm, '');
@@ -102,28 +324,228 @@ function cleanUserText(rawText) {
   text = text.replace(/```[\s\S]*?```/g, '');
   text = text.replace(/^>.*$/gm, '');
   text = text.replace(/<<<EXTERNAL_UNTRUSTED_CONTENT[\s\S]*?END_EXTERNAL_UNTRUSTED_CONTENT.*>>>/g, '');
-  text = text.trim();
+  text = stripUnfencedJsonBlocks(text);
+  text = stripPasteLeadInBlocks(text);
+  text = text.replace(/"\[@[^\]]+\]\([^)]+\)[^"]*"/g, '');
+  text = text.replace(/"[^"\n]*(?:\r?\n[^"\n]*){2,}"/g, '');
+  text = text.replace(/[ \t]{2,}/g, ' ');
+
+  const paragraphs = text
+    .split(/\r?\n\s*\r?\n/)
+    .map(p => p.trim())
+    .filter(p => !isContaminatedParagraph(p, subjectNames));
+
+  text = paragraphs.join('\n\n').trim();
+  if (automatedPrompts.has(text)) return '';
 
   return text.length > 10 ? text : '';
 }
 
-function collectAntigravityMessages(homeDir, now) {
+function readVarint(buf, offset) {
+  let value = 0;
+  let shift = 0;
+  let pos = offset;
+  while (pos < buf.length) {
+    const byte = buf[pos++];
+    value += (byte & 0x7f) * (2 ** shift);
+    if ((byte & 0x80) === 0) return { value, nextOffset: pos };
+    shift += 7;
+    if (shift > 49) break;
+  }
+  return null;
+}
+
+function isSidecarRawSummary(rawSummary, convId, sidecarIds) {
+  if (!rawSummary) return false;
+  const buf = Buffer.from(rawSummary);
+  const str = buf.toString('utf8');
+
+  if (
+    str.includes('agentapi') ||
+    str.includes('new-conversation') ||
+    str.includes('command(') ||
+    str.includes('read_file(') ||
+    str.includes('write_file(') ||
+    str.includes('read_url(')
+  ) {
+    return true;
+  }
+
+  for (const id of sidecarIds) {
+    if (id && str.includes(id)) return true;
+  }
+
+  if (convId && convId.length === 36) {
+    const marker = Buffer.from(`\x32\x24${convId}`, 'utf8');
+    const idx = buf.indexOf(marker);
+    if (idx !== -1) {
+      let pos = idx + marker.length;
+      while (pos < buf.length && buf[pos] === 0x3a) {
+        const lenInfo = readVarint(buf, pos + 1);
+        if (!lenInfo) break;
+        pos = lenInfo.nextOffset + lenInfo.value;
+      }
+      if (pos < buf.length && buf[pos] === 0x62) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function collectAutomationMetadata(homeDir) {
+  const automatedPrompts = new Set();
+  const sidecarIds = new Set();
+  const sidecarConvIds = new Set();
+
+  const registerPrompt = prompt => {
+    if (typeof prompt === 'string' && prompt.trim()) {
+      automatedPrompts.add(prompt.trim());
+    }
+  };
+
+  const sidecarsConfigDir = path.join(homeDir, '.gemini/config/sidecars');
+  if (fs.existsSync(sidecarsConfigDir)) {
+    try {
+      const entries = fs.readdirSync(sidecarsConfigDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        sidecarIds.add(entry.name);
+        const cfgPath = path.join(sidecarsConfigDir, entry.name, 'sidecar.json');
+        if (fs.existsSync(cfgPath)) {
+          try {
+            const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+            if (Array.isArray(cfg.args)) {
+              const sepIdx = cfg.args.indexOf('--');
+              if (sepIdx !== -1 && cfg.args[sepIdx + 1]) {
+                registerPrompt(cfg.args[sepIdx + 1]);
+              } else if (cfg.args.includes('new-conversation') || cfg.args.includes('send-message')) {
+                registerPrompt(cfg.args[cfg.args.length - 1]);
+              }
+            }
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
+  }
+
+  const openclawCronStores = new Set([path.join(homeDir, '.openclaw/cron/jobs.json')]);
+  const openclawConfigPath = path.join(homeDir, '.openclaw/openclaw.json');
+  if (fs.existsSync(openclawConfigPath)) {
+    try {
+      const cfg = JSON.parse(fs.readFileSync(openclawConfigPath, 'utf8'));
+      const jobs = Array.isArray(cfg.cron?.jobs) ? cfg.cron.jobs : (Array.isArray(cfg.jobs) ? cfg.jobs : []);
+      for (const job of jobs) {
+        registerPrompt(job?.payload?.message || job?.payload?.text);
+      }
+      if (typeof cfg.cron?.store === 'string' && cfg.cron.store.trim()) {
+        const storePath = cfg.cron.store.startsWith('~/')
+          ? path.join(homeDir, cfg.cron.store.slice(2))
+          : cfg.cron.store;
+        openclawCronStores.add(storePath);
+      }
+      if (typeof cfg.agents?.defaults?.heartbeat?.prompt === 'string') {
+        registerPrompt(cfg.agents.defaults.heartbeat.prompt);
+      }
+    } catch (e) {}
+  }
+
+  for (const cronStorePath of openclawCronStores) {
+    if (fs.existsSync(cronStorePath)) {
+      try {
+        const parsed = JSON.parse(fs.readFileSync(cronStorePath, 'utf8'));
+        const jobs = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.jobs) ? parsed.jobs : []);
+        for (const job of jobs) {
+          registerPrompt(job?.payload?.message || job?.payload?.text);
+        }
+      } catch (e) {}
+    }
+  }
+
+  if (process.env.OPENCLAW_CRON_LIST) {
+    try {
+      const parsed = JSON.parse(process.env.OPENCLAW_CRON_LIST);
+      const jobs = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.jobs) ? parsed.jobs : []);
+      for (const job of jobs) {
+        registerPrompt(job?.payload?.message || job?.payload?.text);
+      }
+    } catch (e) {}
+  }
+
+  return { automatedPrompts, sidecarIds, sidecarConvIds, registerPrompt };
+}
+
+async function collectAntigravityMessages(homeDir, now, subjectNames, automationMeta) {
   const messages = [];
   const geminiDir = path.join(homeDir, '.gemini');
-  const brainRoots = [];
+  const agyDirs = [];
 
   if (fs.existsSync(geminiDir)) {
     try {
       const dirs = fs.readdirSync(geminiDir, { withFileTypes: true })
         .filter(dirent => dirent.isDirectory() && dirent.name.startsWith('antigravity'))
-        .map(dirent => path.join(geminiDir, dirent.name, 'brain'));
-      brainRoots.push(...dirs);
+        .map(dirent => path.join(geminiDir, dirent.name));
+      agyDirs.push(...dirs);
     } catch (e) {
       checkAccess(e);
     }
   }
 
-  for (const brainDir of brainRoots) {
+  const { automatedPrompts, sidecarIds, sidecarConvIds, registerPrompt } = automationMeta;
+  const subagentConvIds = new Set();
+
+  for (const agyDir of agyDirs) {
+    const sidecarDataDir = path.join(agyDir, 'sidecar_data');
+    if (fs.existsSync(sidecarDataDir)) {
+      try {
+        const scDirs = fs.readdirSync(sidecarDataDir, { withFileTypes: true }).filter(d => d.isDirectory());
+        for (const scDir of scDirs) {
+          sidecarIds.add(scDir.name);
+          const eventsDir = path.join(sidecarDataDir, scDir.name, 'events');
+          if (!fs.existsSync(eventsDir)) continue;
+          const eventFiles = fs.readdirSync(eventsDir).filter(f => f.endsWith('.json'));
+          for (const ef of eventFiles) {
+            try {
+              const ev = JSON.parse(fs.readFileSync(path.join(eventsDir, ef), 'utf8'));
+              const newConv = ev?.payload?.newConversation;
+              const sendMsg = ev?.payload?.sendMessage;
+              if (newConv?.conversationId) sidecarConvIds.add(newConv.conversationId);
+              if (newConv?.prompt) registerPrompt(newConv.prompt);
+              if (sendMsg?.conversationId) sidecarConvIds.add(sendMsg.conversationId);
+              if (sendMsg?.prompt) registerPrompt(sendMsg.prompt);
+              if (sendMsg?.message) registerPrompt(sendMsg.message);
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
+    }
+
+    const dbPath = path.join(agyDir, 'conversation_summaries.db');
+    if (fs.existsSync(dbPath)) {
+      try {
+        const sqlite = await import('node:sqlite');
+        const db = new sqlite.DatabaseSync(dbPath, { readOnly: true });
+        try {
+          const rows = db.prepare('SELECT conversation_id, nesting_depth, parent_conversation_id, agent_name, raw_summary FROM conversation_summaries').all();
+          for (const row of rows) {
+            const cid = row.conversation_id;
+            if (!cid) continue;
+            if ((row.nesting_depth && row.nesting_depth > 0) || row.parent_conversation_id || row.agent_name) {
+              subagentConvIds.add(cid);
+              continue;
+            }
+            if (isSidecarRawSummary(row.raw_summary, cid, sidecarIds)) {
+              sidecarConvIds.add(cid);
+            }
+          }
+        } finally {
+          db.close();
+        }
+      } catch (e) {}
+    }
+
+    const brainDir = path.join(agyDir, 'brain');
     if (!fs.existsSync(brainDir)) continue;
 
     let conversations = [];
@@ -137,6 +559,8 @@ function collectAntigravityMessages(homeDir, now) {
     }
 
     for (const convId of conversations) {
+      if (subagentConvIds.has(convId)) continue;
+
       const logsDir = path.join(brainDir, convId, '.system_generated/logs');
       const fullPath = path.join(logsDir, 'transcript_full.jsonl');
       const compactPath = path.join(logsDir, 'transcript.jsonl');
@@ -160,14 +584,22 @@ function collectAntigravityMessages(homeDir, now) {
         continue;
       }
 
+      const isSidecarConv = sidecarConvIds.has(convId);
+      let seenFirstUserInput = false;
+
       for (const line of lines) {
         if (!line.trim()) continue;
         try {
           const entry = JSON.parse(line);
           if (entry.source === 'USER_EXPLICIT' && entry.type === 'USER_INPUT' && typeof entry.content === 'string') {
+            const isInitialStep = entry.step_index === 0 || !seenFirstUserInput;
+            seenFirstUserInput = true;
+            if (isSidecarConv && isInitialStep) {
+              continue;
+            }
             const ts = (entry.created_at ? new Date(entry.created_at).getTime() : 0) || stats.mtimeMs;
             if (now - ts <= TWENTY_FOUR_HOURS) {
-              const cleaned = cleanUserText(entry.content);
+              const cleaned = cleanUserText(entry.content, subjectNames, automatedPrompts);
               if (cleaned) {
                 messages.push({ timestamp: ts, text: cleaned });
               }
@@ -181,129 +613,30 @@ function collectAntigravityMessages(homeDir, now) {
   return messages;
 }
 
-function parseGeminiCliChatRecord(entry, fallbackTs, now, messages) {
-  if (!entry || entry.type !== 'user') return;
-  if (Array.isArray(entry.content) && entry.content.some(c => c && (c.functionResponse || c.functionCall))) {
+function isNonHumanOpenClawValue(val) {
+  if (!val || typeof val !== 'string') return false;
+  return /\b(?:subagent|cron|system|automation|daemon|webhook|inter_session|hook|heartbeat)\b/i.test(val);
+}
+
+function parseOpenClawEntry(entry, fallbackTs, now, messages, subjectNames, automatedPrompts, nonHumanSessionIds = new Set()) {
+  if (!entry || entry.type !== 'message' || entry.message?.role !== 'user') return;
+
+  const entrySessionId = entry.sessionId || entry.session_id || entry.sessionKey || entry.session_key || '';
+  if (entrySessionId && (nonHumanSessionIds.has(entrySessionId) || isNonHumanOpenClawValue(entrySessionId))) {
     return;
   }
 
-  const rawContent = entry.displayContent ?? entry.content ?? entry.message;
-  const messageContent = typeof rawContent === 'string'
-    ? rawContent
-    : Array.isArray(rawContent)
-      ? rawContent.map(c => (typeof c === 'string' ? c : (typeof c?.text === 'string' ? c.text : ''))).filter(Boolean).join('\n')
-      : '';
-
-  if (!messageContent) return;
-
-  const ts = (entry.timestamp ? new Date(entry.timestamp).getTime() : 0) || fallbackTs;
-  if (now - ts <= TWENTY_FOUR_HOURS) {
-    const cleaned = cleanUserText(messageContent);
-    if (cleaned) {
-      messages.push({ timestamp: ts, text: cleaned });
-    }
+  const candidateFields = [
+    entry.message?.sender?.label,
+    entry.message?.sender?.id,
+    entry.message?.sender?.kind,
+    entry.message?.provenance?.kind,
+    entry.provenance?.kind,
+    entry.source
+  ];
+  if (candidateFields.some(isNonHumanOpenClawValue)) {
+    return;
   }
-}
-
-function collectGeminiCliMessages(homeDir, now) {
-  const messages = [];
-  const tmpDir = path.join(homeDir, '.gemini/tmp');
-  if (!fs.existsSync(tmpDir)) return messages;
-
-  let projectDirs = [];
-  try {
-    projectDirs = fs.readdirSync(tmpDir, { withFileTypes: true })
-      .filter(dirent => dirent.isDirectory())
-      .map(dirent => path.join(tmpDir, dirent.name));
-  } catch (e) {
-    checkAccess(e);
-    return messages;
-  }
-
-  for (const projectDir of projectDirs) {
-    const logsFile = path.join(projectDir, 'logs.json');
-    if (fs.existsSync(logsFile)) {
-      try {
-        const stats = fs.statSync(logsFile);
-        if (now - stats.mtimeMs <= TWENTY_FOUR_HOURS) {
-          const entries = JSON.parse(fs.readFileSync(logsFile, 'utf8'));
-          if (Array.isArray(entries)) {
-            for (const entry of entries) {
-              parseGeminiCliChatRecord(entry, stats.mtimeMs, now, messages);
-            }
-          }
-        }
-      } catch (e) {}
-    }
-
-    const chatsDir = path.join(projectDir, 'chats');
-    if (!fs.existsSync(chatsDir)) continue;
-
-    let chatFiles = [];
-    try {
-      chatFiles = fs.readdirSync(chatsDir, { withFileTypes: true })
-        .filter(dirent => dirent.isFile() && dirent.name.startsWith('session-') && (dirent.name.endsWith('.json') || dirent.name.endsWith('.jsonl')))
-        .map(dirent => path.join(chatsDir, dirent.name));
-    } catch (e) {
-      continue;
-    }
-
-    for (const chatFile of chatFiles) {
-      let stats;
-      try {
-        stats = fs.statSync(chatFile);
-      } catch (e) {
-        continue;
-      }
-
-      if (now - stats.mtimeMs > TWENTY_FOUR_HOURS) continue;
-
-      if (chatFile.endsWith('.json')) {
-        try {
-          const parsed = JSON.parse(fs.readFileSync(chatFile, 'utf8'));
-          if (parsed?.kind === 'subagent') continue;
-          if (Array.isArray(parsed?.messages)) {
-            for (const msg of parsed.messages) {
-              parseGeminiCliChatRecord(msg, stats.mtimeMs, now, messages);
-            }
-          }
-        } catch (e) {}
-      } else {
-        let lines = [];
-        try {
-          lines = fs.readFileSync(chatFile, 'utf8').split('\n');
-        } catch (e) {
-          continue;
-        }
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const entry = JSON.parse(line);
-            if (entry?.kind === 'subagent') break;
-            if (Array.isArray(entry?.$set?.messages)) {
-              for (const msg of entry.$set.messages) {
-                parseGeminiCliChatRecord(msg, stats.mtimeMs, now, messages);
-              }
-            } else {
-              parseGeminiCliChatRecord(entry, stats.mtimeMs, now, messages);
-            }
-          } catch (e) {}
-        }
-      }
-    }
-  }
-
-  return messages;
-}
-
-function parseOpenClawEntry(entry, fallbackTs, now, messages) {
-  if (!entry || entry.type !== 'message' || entry.message?.role !== 'user') return;
-
-  const senderLabel = entry.message?.sender?.label || '';
-  const senderId = entry.message?.sender?.id || '';
-  const isSubagent = senderId.includes('subagent') || senderLabel.toLowerCase().includes('subagent');
-  if (isSubagent) return;
 
   const messageContent = Array.isArray(entry.message.content)
     ? entry.message.content.find(c => c.type === 'text')?.text || ''
@@ -313,15 +646,42 @@ function parseOpenClawEntry(entry, fallbackTs, now, messages) {
   const ts = new Date(rawTs).getTime() || fallbackTs;
 
   if (now - ts <= TWENTY_FOUR_HOURS) {
-    const cleaned = cleanUserText(messageContent);
+    const cleaned = cleanUserText(messageContent, subjectNames, automatedPrompts);
     if (cleaned) {
       messages.push({ timestamp: ts, text: cleaned });
     }
   }
 }
 
-async function collectOpenClawMessages(homeDir, now) {
+async function collectOpenClawMessages(homeDir, now, subjectNames, automatedPrompts) {
   const messages = [];
+  const nonHumanSessionIds = new Set();
+  const sessionsDir = path.join(homeDir, '.openclaw/agents/main/sessions');
+  const sessionsIndexPath = path.join(sessionsDir, 'sessions.json');
+
+  if (fs.existsSync(sessionsIndexPath)) {
+    try {
+      const idx = JSON.parse(fs.readFileSync(sessionsIndexPath, 'utf8'));
+      if (idx && typeof idx === 'object') {
+        for (const [k, v] of Object.entries(idx)) {
+          if (
+            isNonHumanOpenClawValue(k) ||
+            isNonHumanOpenClawValue(v?.key) ||
+            isNonHumanOpenClawValue(v?.sessionKey) ||
+            isNonHumanOpenClawValue(v?.subagentRole) ||
+            isNonHumanOpenClawValue(v?.origin?.surface) ||
+            isNonHumanOpenClawValue(v?.origin?.provider) ||
+            Boolean(v?.spawnedBy)
+          ) {
+            nonHumanSessionIds.add(k);
+            if (v?.sessionId) nonHumanSessionIds.add(v.sessionId);
+            if (v?.id) nonHumanSessionIds.add(v.id);
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
   const sqlitePath = path.join(homeDir, '.openclaw/agents/main/agent/openclaw-agent.sqlite');
 
   if (fs.existsSync(sqlitePath)) {
@@ -335,6 +695,7 @@ async function collectOpenClawMessages(homeDir, now) {
         const db = new sqlite.DatabaseSync(sqlitePath, { readOnly: true });
         try {
           const rows = db.prepare('SELECT event_json, event_zstd FROM transcript_events').all();
+          const parsedEvents = [];
           for (const row of rows) {
             let rawJson = row.event_json;
             if (!rawJson && row.event_zstd && typeof zlib.zstdDecompressSync === 'function') {
@@ -343,8 +704,25 @@ async function collectOpenClawMessages(homeDir, now) {
             if (!rawJson) continue;
             try {
               const entry = JSON.parse(rawJson);
-              parseOpenClawEntry(entry, latestMtime, now, messages);
+              if (entry?.type === 'session') {
+                const sid = entry.id || entry.sessionId || entry.session_id;
+                const skey = entry.key || entry.sessionKey || entry.session_key;
+                if (
+                  isNonHumanOpenClawValue(sid) ||
+                  isNonHumanOpenClawValue(skey) ||
+                  isNonHumanOpenClawValue(entry.subagentRole) ||
+                  Boolean(entry.spawnedBy)
+                ) {
+                  if (sid) nonHumanSessionIds.add(sid);
+                  if (skey) nonHumanSessionIds.add(skey);
+                }
+              } else {
+                parsedEvents.push(entry);
+              }
             } catch (e) {}
+          }
+          for (const entry of parsedEvents) {
+            parseOpenClawEntry(entry, latestMtime, now, messages, subjectNames, automatedPrompts, nonHumanSessionIds);
           }
         } finally {
           db.close();
@@ -355,7 +733,6 @@ async function collectOpenClawMessages(homeDir, now) {
     }
   }
 
-  const sessionsDir = path.join(homeDir, '.openclaw/agents/main/sessions');
   if (!fs.existsSync(sessionsDir)) return messages;
 
   let files = [];
@@ -367,6 +744,9 @@ async function collectOpenClawMessages(homeDir, now) {
   }
 
   for (const file of files) {
+    const baseId = file.replace(/\.jsonl$/, '');
+    if (nonHumanSessionIds.has(baseId) || isNonHumanOpenClawValue(baseId)) continue;
+
     const filePath = path.join(sessionsDir, file);
     let stats;
     try {
@@ -388,7 +768,22 @@ async function collectOpenClawMessages(homeDir, now) {
       if (!line.trim()) continue;
       try {
         const entry = JSON.parse(line);
-        parseOpenClawEntry(entry, stats.mtimeMs, now, messages);
+        if (entry?.type === 'session') {
+          const sid = entry.id || entry.sessionId || entry.session_id;
+          const skey = entry.key || entry.sessionKey || entry.session_key;
+          if (
+            (sid && nonHumanSessionIds.has(sid)) ||
+            (skey && nonHumanSessionIds.has(skey)) ||
+            isNonHumanOpenClawValue(sid) ||
+            isNonHumanOpenClawValue(skey) ||
+            isNonHumanOpenClawValue(entry.subagentRole) ||
+            Boolean(entry.spawnedBy)
+          ) {
+            break;
+          }
+          continue;
+        }
+        parseOpenClawEntry(entry, stats.mtimeMs, now, messages, subjectNames, automatedPrompts, nonHumanSessionIds);
       } catch (e) {}
     }
   }
@@ -396,7 +791,7 @@ async function collectOpenClawMessages(homeDir, now) {
   return messages;
 }
 
-function collectClaudeCodeMessages(homeDir, now) {
+function collectClaudeCodeMessages(homeDir, now, subjectNames, automatedPrompts) {
   const messages = [];
   const projectsDir = path.join(homeDir, '.claude/projects');
   if (!fs.existsSync(projectsDir)) return messages;
@@ -441,21 +836,29 @@ function collectClaudeCodeMessages(homeDir, now) {
         if (!line.trim()) continue;
         try {
           const entry = JSON.parse(line);
-          if (entry.isMeta || entry.isSidechain) continue;
+          if (entry.isMeta || entry.isSidechain || entry.isCompactSummary || entry.isVisibleInTranscriptOnly || Boolean(entry.agentId)) {
+            continue;
+          }
+          if (entry.userType && entry.userType !== 'external') continue;
+          if (typeof entry.entrypoint === 'string' && /^sdk/i.test(entry.entrypoint)) continue;
           if (entry.type === 'user' && entry.message?.role === 'user') {
             if (Array.isArray(entry.message.content) && entry.message.content.some(c => c.type === 'tool_result')) {
               continue;
             }
 
             const messageContent = Array.isArray(entry.message.content)
-              ? entry.message.content.filter(c => c.type === 'text' && typeof c.text === 'string').map(c => c.text).join('\n')
+              ? entry.message.content
+                .filter(c => c.type === 'text' && typeof c.text === 'string')
+                .map(c => c.text)
+                .filter(t => !t.trim().startsWith('Base directory for this skill:') && !t.trim().startsWith('This session is being continued from a previous conversation') && !t.trim().startsWith('[Request interrupted by user'))
+                .join('\n')
               : typeof entry.message.content === 'string' ? entry.message.content : '';
 
             const rawTs = entry.timestamp || stats.mtimeMs;
             const ts = new Date(rawTs).getTime() || stats.mtimeMs;
 
             if (now - ts <= TWENTY_FOUR_HOURS) {
-              const cleaned = cleanUserText(messageContent);
+              const cleaned = cleanUserText(messageContent, subjectNames, automatedPrompts);
               if (cleaned) {
                 messages.push({ timestamp: ts, text: cleaned });
               }
@@ -469,7 +872,7 @@ function collectClaudeCodeMessages(homeDir, now) {
   return messages;
 }
 
-function collectCodexMessages(homeDir, now) {
+function collectCodexMessages(homeDir, now, subjectNames, automatedPrompts) {
   const messages = [];
   const codexDir = process.env.CODEX_HOME || path.join(homeDir, '.codex');
   const sessionsDir = path.join(codexDir, 'sessions');
@@ -506,18 +909,41 @@ function collectCodexMessages(homeDir, now) {
       if (!line.trim()) continue;
       try {
         const entry = JSON.parse(line);
+        if (entry.type === 'session_meta') {
+          const src = entry.payload?.source;
+          const orig = entry.payload?.originator;
+          if (
+            (src && typeof src === 'object') ||
+            (typeof src === 'string' && /^(?:subagent|exec|mcp)$/i.test(src)) ||
+            orig === 'codex_exec' ||
+            Boolean(entry.payload?.parent_thread_id) ||
+            Boolean(entry.payload?.agent_role)
+          ) {
+            break;
+          }
+          continue;
+        }
         if (entry.type === 'response_item' && entry.payload?.type === 'message' && entry.payload?.role === 'user' && Array.isArray(entry.payload.content)) {
           const textBlocks = entry.payload.content
             .filter(c => c.type === 'input_text' && typeof c.text === 'string')
             .map(c => c.text)
-            .filter(t => !t.includes('<environment_context>') && !t.includes('<permissions instructions>') && !t.includes('<user_instructions>') && !t.startsWith('# AGENTS.md instructions'));
+            .filter(t => (
+              !t.includes('<environment_context>') &&
+              !t.includes('<permissions instructions>') &&
+              !t.includes('<user_instructions>') &&
+              !t.includes('<skill>') &&
+              !t.includes('<subagent_notification>') &&
+              !t.includes('<turn_aborted>') &&
+              !t.includes('<system_instruction>') &&
+              !t.startsWith('# AGENTS.md instructions')
+            ));
 
           const messageContent = textBlocks.join('\n');
           const rawTs = entry.timestamp || stats.mtimeMs;
           const ts = new Date(rawTs).getTime() || stats.mtimeMs;
 
           if (now - ts <= TWENTY_FOUR_HOURS) {
-            const cleaned = cleanUserText(messageContent);
+            const cleaned = cleanUserText(messageContent, subjectNames, automatedPrompts);
             if (cleaned) {
               messages.push({ timestamp: ts, text: cleaned });
             }
@@ -528,6 +954,49 @@ function collectCodexMessages(homeDir, now) {
   }
 
   return messages;
+}
+
+function commitLensRepo() {
+  const gitDir = path.join(LENS_DIR, '.git');
+  if (!fs.existsSync(gitDir)) {
+    return;
+  }
+
+  try {
+    const existingFiles = CANONICAL_LENS_FILES.filter(f => fs.existsSync(path.join(LENS_DIR, f)));
+    if (existingFiles.length === 0) {
+      return;
+    }
+
+    const status = execFileSync('git', ['status', '--porcelain', '--', ...existingFiles], {
+      cwd: LENS_DIR,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim();
+
+    if (!status) {
+      return;
+    }
+
+    const modifiedNodes = [];
+    if (/AXIOM\.ya?ml/i.test(status)) modifiedNodes.push('AXIOM');
+    if (/ETHOS\.ya?ml/i.test(status)) modifiedNodes.push('ETHOS');
+    if (/MODUS\.ya?ml/i.test(status)) modifiedNodes.push('MODUS');
+
+    let commitMsg = 'Distill LENS identity.';
+    if (modifiedNodes.length > 0) {
+      commitMsg = `Distill ${modifiedNodes.join(', ')}.`;
+    }
+
+    execFileSync('git', ['add', '--', ...existingFiles], { cwd: LENS_DIR, stdio: 'ignore' });
+    execFileSync('git', ['commit', '-m', commitMsg], { cwd: LENS_DIR, stdio: 'ignore' });
+
+    try {
+      execFileSync('git', ['push'], { cwd: LENS_DIR, stdio: 'ignore' });
+    } catch (pushErr) {}
+  } catch (err) {
+    checkAccess(err);
+  }
 }
 
 async function distillation() {
@@ -548,13 +1017,14 @@ async function distillation() {
 
   const homeDir = process.env.HOME || os.homedir() || '';
   const now = Date.now();
+  const subjectNames = getSubjectNameTokens();
+  const automationMeta = collectAutomationMetadata(homeDir);
 
   const rawMessages = [
-    ...collectAntigravityMessages(homeDir, now),
-    ...collectGeminiCliMessages(homeDir, now),
-    ...(await collectOpenClawMessages(homeDir, now)),
-    ...collectClaudeCodeMessages(homeDir, now),
-    ...collectCodexMessages(homeDir, now)
+    ...(await collectAntigravityMessages(homeDir, now, subjectNames, automationMeta)),
+    ...(await collectOpenClawMessages(homeDir, now, subjectNames, automationMeta.automatedPrompts)),
+    ...collectClaudeCodeMessages(homeDir, now, subjectNames, automationMeta.automatedPrompts),
+    ...collectCodexMessages(homeDir, now, subjectNames, automationMeta.automatedPrompts)
   ];
 
   rawMessages.sort((a, b) => a.timestamp - b.timestamp);
@@ -587,4 +1057,8 @@ async function distillation() {
   console.log('DISTILLATION_READY');
 }
 
-distillation();
+if (process.argv.includes('--commit')) {
+  commitLensRepo();
+} else {
+  distillation();
+}

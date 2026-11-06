@@ -10,7 +10,7 @@ Most AI output fails because it neither thinks how you think nor writes how you 
 
 Style without judgment is just hollow mimicry, and facts without style read like a robot reciting your resume. LENS separates what is true about your life (`AXIOM`), how you weigh trade-offs (`ETHOS`), and how you actually phrase things (`MODUS`) so your agent reasons through your compass before speaking in your voice.
 
-Identity also should not be a second job to maintain. LENS models one human on one personal machine (no multi-user profiles, persona switchers, or opaque vector databases) and runs natively across **Google Antigravity**, **Google Gemini CLI**, **OpenClaw**, **Claude Code**, and **OpenAI Codex CLI** through the universal `SKILL.md` standard.
+Identity also should not be a second job to maintain. LENS models one human on one personal machine (no multi-user profiles, persona switchers, or opaque vector databases) and runs natively across **Google Antigravity**, **OpenClaw**, **Claude Code**, and **OpenAI Codex CLI** through the universal `SKILL.md` standard.
 
 ## The Trinity Nodes
 
@@ -74,7 +74,7 @@ lens-skill/
 
 ## How It Evolves
 
-Behind the scenes, `scripts/distillation.js` acts as a zero-token preflight harvester. It collects your raw user messages from the last 24 hours across **Antigravity IDE & CLI**, **Gemini CLI**, **OpenClaw**, **Claude Code**, and **Codex CLI**. If you have not chatted recently, it exits silently (`TRACE_EMPTY`) without waking a model or burning tokens.
+Behind the scenes, `scripts/distillation.js` acts as a zero-token preflight harvester. It collects your raw user messages from the last 24 hours across **Google Antigravity (App, IDE, & `agy` CLI)**, **OpenClaw**, **Claude Code**, and **Codex CLI**. If you have not chatted recently, it exits silently (`TRACE_EMPTY`) without waking a model or burning tokens.
 
 When new messages exist, `prompts/distillation.md` filters out assistant replies, pasted logs, rapid bot commands (*"run the build"*), and one-off project tasks. Only signals that would still hold true if you switched projects tomorrow make it into your YAML nodes.
 
@@ -90,7 +90,6 @@ Running `bootstrap.js` handles the local setup automatically:
 1. Initializes `~/.lens/` (`AXIOM.yaml`, `ETHOS.yaml`, `MODUS.yaml`, `README.md`, `SCOPE.json`, `TRACE.txt`), or leaves your existing `~/.lens/` untouched if you already cloned your identity repo from Git.
 2. Detects installed agent platforms and links the skill into each one:
    * **Google Antigravity:** `~/.gemini/config/skills/lens` (unless already registered in `~/.gemini/config/skills.json`)
-   * **Google Gemini CLI:** `~/.gemini/skills/lens`
    * **OpenClaw:** `<workspace>/skills/lens` (via `~/.openclaw/openclaw.json`, or install via [ClawHub](https://clawhub.ai/capachow/lens))
    * **Claude Code:** `~/.claude/skills/lens`
    * **OpenAI Codex CLI:** `~/.codex/skills/lens` (or `$CODEX_HOME/skills/lens`)
@@ -102,17 +101,13 @@ How nightly distillation (`0 3 * * *`) and calibration interviews (`30 11,17 * *
 
 * **OpenClaw:** Runs a persistent daemon with a native `cron` tool. On your first LENS interaction (or whenever preflight spots missing schedules in `OPENCLAW_CRON_LIST`), the agent registers `lens-distillation` and `lens-interview` automatically and asks your first calibration question.
 * **Google Antigravity:** `bootstrap.js` writes the **"LENS Nightly Distillation"** and **"LENS Calibration Interview"** definitions to `~/.gemini/config/sidecars/` with scoped permissions for `~/.lens/`. Open the **Automations Dashboard** (`sidecar://dashboard`) to toggle them on.
-* **Claude Code, Google Gemini CLI, & OpenAI Codex CLI:** Terminal CLIs only run while a session is open and have no background daemon, so you have three ways to evolve `~/.lens/`:
+* **Claude Code & OpenAI Codex CLI:** Terminal CLIs only run while a session is open and have no background daemon, so you have three ways to evolve `~/.lens/`:
   1. **Shared harvesting (automatic):** If you also run OpenClaw or Antigravity on the same machine, their overnight jobs automatically harvest your CLI sessions too.
   2. **On demand in chat:** Say *"Distill my LENS"* or *"Focus my LENS"* during any CLI session.
   3. **System `crontab` (optional):** If you only use a terminal CLI and want unattended 3:00 AM distillation, add the preflight check to `crontab -e` so a model only runs when `distillation.js` outputs `DISTILLATION_READY`:
      * **Claude Code:**
        ```bash
        0 3 * * * node /abs/path/to/lens/scripts/distillation.js | grep -q DISTILLATION_READY && claude -p "Read /abs/path/to/lens/prompts/distillation.md and follow it strictly." --allowedTools "Read,Edit,Write,Bash"
-       ```
-     * **Google Gemini CLI:**
-       ```bash
-       0 3 * * * node /abs/path/to/lens/scripts/distillation.js | grep -q DISTILLATION_READY && gemini -p "Read /abs/path/to/lens/prompts/distillation.md and follow it strictly." --yolo
        ```
      * **OpenAI Codex CLI:**
        ```bash

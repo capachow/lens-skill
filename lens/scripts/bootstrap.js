@@ -192,12 +192,10 @@ function syncSkillLinks(reboot = false) {
 
   const geminiDir = path.join(HOME_DIR, '.gemini');
   if (fs.existsSync(geminiDir)) {
-    const geminiCliLink = ensureSkillLink(path.join(geminiDir, 'skills', 'lens'), reboot);
-    if (geminiCliLink) linked.push(geminiCliLink);
-
     const agyConfigDir = path.join(geminiDir, 'config');
     const agyDir = path.join(geminiDir, 'antigravity');
-    if (fs.existsSync(agyConfigDir) || fs.existsSync(agyDir)) {
+    const agyCliDir = path.join(geminiDir, 'antigravity-cli');
+    if (fs.existsSync(agyConfigDir) || fs.existsSync(agyDir) || fs.existsSync(agyCliDir)) {
       const skillsJsonPath = path.join(agyConfigDir, 'skills.json');
       let coveredBySkillsJson = false;
       if (fs.existsSync(skillsJsonPath)) {
@@ -280,6 +278,7 @@ function syncAntigravitySidecars(timezone, interviewExpr, distillationPrompt, in
           workspace_uris: [lensWorkspaceUri],
           access_grants: [
             `command(node ${distillationScript})`,
+            `command(node ${distillationScript} --commit)`,
             `command(node ${bootstrapScript})`,
             `read_file(${LENS_DIR})`,
             `write_file(${LENS_DIR})`,
@@ -306,6 +305,7 @@ function syncAntigravitySidecars(timezone, interviewExpr, distillationPrompt, in
           workspace_uris: [lensWorkspaceUri],
           access_grants: [
             `command(node ${interviewScript})`,
+            `command(node ${distillationScript} --commit)`,
             `command(node ${bootstrapScript})`,
             `read_file(${LENS_DIR})`,
             `write_file(${LENS_DIR})`,

@@ -28,4 +28,4 @@
    - **Specificity Preservation:** Never compress sharp, concrete entries into vague platitudes. Modify an already-calibrated key only when `~/.lens/TRACE.txt` supplies new facts, a sharper trade-off heuristic, or a direct contradiction per `references/resolve-protocol.md`.
 
 **OUTPUT:**
-Surgically update `~/.lens/AXIOM.yaml`, `~/.lens/ETHOS.yaml`, and `~/.lens/MODUS.yaml` with exact YAML indentation and a single trailing newline. Return a concise summary of updated keys as your final text response. Do NOT call any external `message` tool, and do NOT clear `~/.lens/TRACE.txt`.
+Surgically update `~/.lens/AXIOM.yaml`, `~/.lens/ETHOS.yaml`, and `~/.lens/MODUS.yaml` with exact YAML indentation and a single trailing newline. Once finished, run `node scripts/distillation.js --commit` from the `lens/` skill directory (outside the workspace sandbox if needed) to snapshot and sync changes if `~/.lens/` is a git repository. Return a concise summary of updated keys as your final text response. Do NOT call any external `message` tool, and do NOT clear `~/.lens/TRACE.txt`.

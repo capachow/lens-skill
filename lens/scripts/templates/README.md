@@ -1,6 +1,6 @@
 # 🧐 `~/.lens`: Personal Identity
 
-This directory holds your live identity for the [LENS](https://github.com/capachow/lens-skill) agent skill across **Google Antigravity**, **Google Gemini CLI**, **OpenClaw**, **Claude Code**, and **OpenAI Codex CLI**. You can edit the YAML files by hand at any time, or update them in chat (*"Add to my LENS that..."*, *"Focus my LENS"*, *"Distill my LENS"*).
+This directory holds your live identity for the [LENS](https://github.com/capachow/lens-skill) agent skill across **Google Antigravity**, **OpenClaw**, **Claude Code**, and **OpenAI Codex CLI**. You can edit the YAML files by hand at any time, or update them in chat (*"Add to my LENS that..."*, *"Focus my LENS"*, *"Distill my LENS"*).
 
 > **Keep `~/.lens/` Private:** If you back up or sync this directory with Git, always use a **private** repository.
 
@@ -21,7 +21,7 @@ Edit `SCOPE.json` to change how LENS harvests and calibrates:
 ```json
 {
   "meta": {
-    "version": "2.0.1",
+    "version": "2.1.0",
     "installed": "2026-02-07",
     "anonymize": false
   },

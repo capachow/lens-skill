@@ -28,7 +28,7 @@ LENS models a singular human subject through **The Trinity Nodes** stored in `~/
 2. **Sync Scheduled Jobs:**
    - **OpenClaw (`cron` tool available):** Whenever `bootstrap.js`, `distillation.js`, or `interview.js` outputs `BOOTSTRAP_LENS`, register or update both `lens-distillation` and `lens-interview` in the `cron` tool using the exact `jobs` payloads from stdout.
    - **Google Antigravity:** `bootstrap.js` writes the `lens-distillation` and `lens-interview` automation definitions to `~/.gemini/config/sidecars/`. On initial setup, inform the user they can enable them in `[Open Automations Dashboard](sidecar://dashboard)`.
-   - **Terminal CLIs (Claude Code, Gemini CLI, Codex CLI):** Foreground CLIs have no persistent background daemon; their transcripts are automatically harvested overnight if OpenClaw or Antigravity runs on the same machine, or evolved on demand via *"Distill my LENS"* / *"Focus my LENS"*.
+   - **Terminal CLIs (Claude Code, Codex CLI):** Foreground CLIs have no persistent background daemon; their transcripts are automatically harvested overnight if OpenClaw or Antigravity runs on the same machine, or evolved on demand via *"Distill my LENS"* / *"Focus my LENS"*.
 3. **First-Run Calibration:** If `BOOTSTRAP_LENS` outputs `"triggerImmediate": "lens-interview"` (or if all three Trinity Nodes in `~/.lens/` contain only `[Pending Input]` placeholders on first activation), immediately run `node scripts/interview.js` and execute [prompts/interview.md](./prompts/interview.md).
 
 ## 2. Three-Pass Cognitive Pipeline (Using LENS)

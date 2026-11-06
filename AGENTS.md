@@ -8,7 +8,7 @@ These rules govern agentic development on the `lens-skill` repository:
 2. **Single-Subject Architecture:**
    - LENS models one human on one personal machine. Never introduce multi-user profiles, persona switchers, or external database dependencies.
 3. **Agent-Agnostic Skill (`lens/`):**
-   - Keep `lens/SKILL.md`, `lens/prompts/`, `lens/references/`, and `lens/scripts/` universal across Google Antigravity, Gemini CLI, OpenClaw, Claude Code, and OpenAI Codex CLI.
+   - Keep `lens/SKILL.md`, `lens/prompts/`, `lens/references/`, and `lens/scripts/` universal across Google Antigravity, OpenClaw, Claude Code, and OpenAI Codex CLI.
    - Always resolve skill paths via `fs.realpathSync(fileURLToPath(import.meta.url))` and `LENS_DIR` to `~/.lens/` (`path.join(HOME_DIR, '.lens')`) in `bootstrap.js`.
 4. **Code & Versioning Standards:**
    - `lens/package.json` is the single source of truth for the LENS version.
