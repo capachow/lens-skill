@@ -6,8 +6,8 @@ This protocol defines the logic for handling contradictions, privacy boundaries,
 - **Rule:** New interaction data takes precedence over existing Node data if a direct contradiction exists.
 - **Action:**
   - **Placeholder Replacement:** If the existing entry is an uncalibrated `[Pending Input]` template string, overwrite it directly in place. Never archive `[Pending Input]` placeholders.
-  - **Real Data Evolution:** When replacing previously populated factual milestones in `AXIOM.yaml` (such as a job change, relocation, or hardware replacement), preserve the prior milestone inside `timeline` or `history`. In `ETHOS.yaml` and `MODUS.yaml`, refine heuristics and phrasing directly in place without spawning `historical` or `legacy` sub-keys.
-  - **Validation:** If the conflict is high-impact (e.g., a core philosophical shift), use `prompts/interview.md` to seek surgical clarification.
+  - **Real Data Evolution:** When replacing previously populated factual milestones in `~/.lens/AXIOM.yaml` (such as a job change, relocation, or hardware replacement), preserve the prior milestone inside `timeline` or `history`. In `~/.lens/ETHOS.yaml` and `~/.lens/MODUS.yaml`, refine heuristics and phrasing directly in place without spawning `historical` or `legacy` sub-keys.
+  - **Validation:** If the conflict is high-impact (e.g., a core philosophical shift), use [prompts/interview.md](../prompts/interview.md) to seek surgical clarification.
 
 ## 2. Privacy Redlines (Exfiltration Protection)
 - **Rule:** AXIOM data is for internal calibration only unless explicitly cleared for public manifestation.

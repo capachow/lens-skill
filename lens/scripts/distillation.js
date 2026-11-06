@@ -1,9 +1,8 @@
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import zlib from 'zlib';
 import { execFileSync } from 'child_process';
-import { LENS_DIR, checkAccess, preflight } from './bootstrap.js';
+import { DEFAULT_SOURCES, HOME_DIR, LENS_DIR, checkAccess, preflight } from './bootstrap.js';
 
 const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
 
@@ -39,41 +38,60 @@ const CANONICAL_LENS_FILES = [
   'ETHOS.yaml',
   'MODUS.yaml',
   'SCOPE.json',
-  'TRACE.txt',
   'README.md',
   '.gitignore'
 ];
 
+const SECURITY_PATTERNS = [
+  { name: 'URL', regex: /https?:\/\/(?:localhost|(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{2,63})\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi },
+  { name: 'PRIVATE_KEY', regex: /-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED |PGP )?PRIVATE KEY(?: BLOCK)?-----[\s\S]*?-----END (?:RSA |EC |DSA |OPENSSH |ENCRYPTED |PGP )?PRIVATE KEY(?: BLOCK)?-----/g },
+  { name: 'PASSWORD', regex: /\b(?:(?:password|passwd|secret|token)(?:\s+(?:is|was)\s+|\s*[:=]\s*)|bearer\s+)["']?[^\s,;"']+["']?/gi },
+  { name: 'API_ID_KEYS', regex: /\b(?:(?:sk|pk|ghp|gho|ghu|ghs|ghr|github_pat|xoxb|xoxp|xoxa|glpat|AIza|AKIA|ya29)[a-zA-Z0-9._-]{12,}|(?=[a-zA-Z0-9_]*[a-zA-Z])(?=[a-zA-Z0-9_]*\d)[a-zA-Z0-9_]{20,})\b/g },
+  { name: 'SSN', regex: /\b\d{3}-\d{2}-\d{4}\b/g },
+  { name: 'BANK', regex: /\b(?:\d{9}|\d{10,12})\b/g },
+  { name: 'IP', regex: /\b(?:\d{1,3}\.){3}\d{1,3}\b|::1\b|\b(?:[a-fA-F0-9]{1,4}:){1,7}:?[a-fA-F0-9]{0,4}(?::[a-fA-F0-9]{1,4}){1,7}\b|\b(?:[a-fA-F0-9]{1,4}:){7,8}[a-fA-F0-9]{1,4}\b/g }
+];
+
+const PRIVATE_PATTERNS = [
+  { name: 'EMAIL', regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g },
+  { name: 'PHONE', regex: /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b|\b\d{3}[-.\s]\d{4}\b|\+\d{1,3}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}\b/g },
+  { name: 'ADDRESS', regex: /\b\d{1,5}\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Circle|Cir|Way|Pkwy|Parkway)\b/g },
+  { name: 'DOB', regex: /\b(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\b/g },
+  { name: 'USER_HANDLE', regex: /\B@[\w.-]+\b/g }
+];
+
+const STRIPPED_XML_TAG_REGEX = /<(ADDITIONAL_METADATA|USER_SETTINGS_CHANGE|SYSTEM_MESSAGE|ide_opened_file|ide_selection|system-reminder|local-command-stdout|local-command-caveat|task-notification|user-prompt-submit-hook|bash-input|bash-stdout|bash-stderr|ultraplan|skill|subagent_notification|turn_aborted|system_instruction)>[\s\S]*?<\/\1>/g;
+
+const PASTE_LEAD_IN_REGEX = /(?:got|received|sent me|asked me|saw|pasted|shared|forwarded)\s+this(?:\s+now)?(?:\.{2,}|:)\s*$/i;
+
+function parseTimestamp(rawTs, fallbackTs = 0) {
+  if (typeof rawTs === 'number' && Number.isFinite(rawTs)) {
+    return rawTs > 0 && rawTs < 1e11 ? rawTs * 1000 : rawTs;
+  }
+  if (typeof rawTs === 'string' && rawTs.trim()) {
+    const trimmed = rawTs.trim();
+    if (/^\d+(?:\.\d+)?$/.test(trimmed)) {
+      const num = Number(trimmed);
+      return num > 0 && num < 1e11 ? num * 1000 : num;
+    }
+    const parsed = Date.parse(trimmed);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return fallbackTs;
+}
+
 function redact(text, anonymized = false) {
-  const securityPatterns = [
-    { name: 'URL', regex: /https?:\/\/(?:localhost|(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{2,63})\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi },
-    { name: 'PRIVATE_KEY', regex: /-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED |PGP )?PRIVATE KEY(?: BLOCK)?-----[\s\S]*?-----END (?:RSA |EC |DSA |OPENSSH |ENCRYPTED |PGP )?PRIVATE KEY(?: BLOCK)?-----/g },
-    { name: 'PASSWORD', regex: /\b(?:(?:password|passwd|secret|token)(?:\s+(?:is|was)\s+|\s*[:=]\s*)|bearer\s+)["']?[^\s,;"']+["']?/gi },
-    { name: 'API_ID_KEYS', regex: /\b(?:(?:sk|pk|ghp|gho|ghu|ghs|ghr|github_pat|xoxb|xoxp|xoxa|glpat|AIza|AKIA|ya29)[a-zA-Z0-9._-]{12,}|(?=[a-zA-Z0-9_]*[a-zA-Z])(?=[a-zA-Z0-9_]*\d)[a-zA-Z0-9_]{20,})\b/g },
-    { name: 'SSN', regex: /\b\d{3}-\d{2}-\d{4}\b/g },
-    { name: 'BANK', regex: /\b(?:\d{9}|\d{10,12})\b/g },
-    { name: 'IP', regex: /\b(?:\d{1,3}\.){3}\d{1,3}\b|::1\b|\b(?:[a-fA-F0-9]{1,4}:){1,7}:?[a-fA-F0-9]{0,4}(?::[a-fA-F0-9]{1,4}){1,7}\b|\b(?:[a-fA-F0-9]{1,4}:){7,8}[a-fA-F0-9]{1,4}\b/g }
-  ];
-
-  const privatePatterns = [
-    { name: 'EMAIL', regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g },
-    { name: 'PHONE', regex: /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b|\b\d{3}[-.\s]\d{4}\b|\+\d{1,3}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}\b/g },
-    { name: 'ADDRESS', regex: /\b\d{1,5}\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Circle|Cir|Way|Pkwy|Parkway)\b/g },
-    { name: 'DOB', regex: /\b(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\b/g },
-    { name: 'USER_HANDLE', regex: /\B@[\w.-]+\b/g }
-  ];
-
   let cleaned = text;
 
+  SECURITY_PATTERNS.forEach(p => {
+    cleaned = cleaned.replace(p.regex, `[REDACTED_${p.name}]`);
+  });
+
   if (anonymized) {
-    privatePatterns.forEach(p => {
+    PRIVATE_PATTERNS.forEach(p => {
       cleaned = cleaned.replace(p.regex, `[REDACTED_${p.name}]`);
     });
   }
-
-  securityPatterns.forEach(p => {
-    cleaned = cleaned.replace(p.regex, `[REDACTED_${p.name}]`);
-  });
 
   return cleaned;
 }
@@ -84,9 +102,10 @@ function getSubjectNameTokens() {
   if (!fs.existsSync(axiomPath)) return tokens;
   try {
     const content = fs.readFileSync(axiomPath, 'utf8');
-    const match = content.match(/^\s*name:\s*["']?([^"'\r\n]+)["']?/m);
-    if (match && match[1]) {
-      const rawName = match[1].trim();
+    const bioMatch = content.match(/^biometrics_and_chronological_timeline:\r?\n(?:[ \t]+.*\r?\n)*?[ \t]+name:\s*["']?([^"'\r\n]+)["']?/m);
+    const topMatch = bioMatch || content.match(/^name:\s*["']?([^"'\r\n]+)["']?/m);
+    if (topMatch && topMatch[1]) {
+      const rawName = topMatch[1].trim();
       if (rawName && rawName.toLowerCase() !== 'unknown' && !rawName.includes('Pending Input')) {
         for (const part of rawName.split(/\s+/)) {
           const clean = part.replace(/[^a-zA-Z]/g, '').toLowerCase();
@@ -119,7 +138,7 @@ function stripUnfencedJsonBlocks(text) {
 
       while (j < lines.length) {
         const line = lines[j];
-        if (/"[^"\n]+"\s*:/.test(line)) hasJsonKey = true;
+        if (!hasJsonKey && /"[^"\n]+"\s*:/.test(line)) hasJsonKey = true;
         for (let c = 0; c < line.length; c++) {
           const ch = line[c];
           if (escaped) {
@@ -143,9 +162,18 @@ function stripUnfencedJsonBlocks(text) {
         if (depth <= 0) break;
       }
 
-      if (j - i >= 3 && hasJsonKey) {
+      if (depth <= 0 && j - i >= 3 && hasJsonKey) {
         i = j;
         continue;
+      }
+      if (depth > 0) {
+        while (i < lines.length) {
+          if (!/^\s*(?:[\[{}\],]+|"[^"\n]+"\s*:\s*(?:["\d\[{]|true\b|false\b|null\b).*)\s*$/.test(lines[i])) {
+            kept.push(lines[i]);
+          }
+          i++;
+        }
+        break;
       }
     }
 
@@ -167,11 +195,10 @@ function stripPasteLeadInBlocks(text) {
 
   const kept = [];
   let i = 0;
-  const leadInRegex = /(?:because I |just |still |she |he |they )?(?:got|received|sent me|asked me|saw|pasted|shared|forwarded)\s+this(?:\s+now)?(?:\.{2,}|:)\s*$/i;
 
   while (i < paragraphs.length) {
     const para = paragraphs[i].trim();
-    if (leadInRegex.test(para) && i + 1 < paragraphs.length) {
+    if (PASTE_LEAD_IN_REGEX.test(para) && i + 1 < paragraphs.length) {
       kept.push(paragraphs[i]);
       i++;
       while (i < paragraphs.length) {
@@ -200,9 +227,10 @@ function isContaminatedParagraph(para, subjectNames) {
     return true;
   }
 
-  const mentionStart = trimmed.match(/^\[?@([A-Za-z0-9_.\s-]+)\]?(?:\([^)]*\))?[,:]?\s+/);
-  if (mentionStart && subjectNames.size > 0) {
-    const mentionedParts = mentionStart[1].toLowerCase().split(/\s+/);
+  const mentionStart = trimmed.match(/^(?:\[@([A-Za-z0-9_.\s-]+)\]|@([A-Za-z0-9_.-]+))(?:\([^)]*\))?[,:]?\s+/);
+  const mentionTarget = mentionStart ? (mentionStart[1] || mentionStart[2] || '') : '';
+  if (mentionTarget && subjectNames.size > 0) {
+    const mentionedParts = mentionTarget.toLowerCase().split(/\s+/);
     if (mentionedParts.some(p => subjectNames.has(p))) {
       return true;
     }
@@ -226,49 +254,37 @@ function isContaminatedParagraph(para, subjectNames) {
   return false;
 }
 
-function cleanUserText(rawText, subjectNames = new Set(), automatedPrompts = new Set()) {
+function cleanUserText(rawText, subjectNames = new Set(), automatedPrompts = new Set(), anonymized = false) {
   if (!rawText || typeof rawText !== 'string') return '';
   if (rawText.includes('HEARTBEAT_OK') || rawText.startsWith('[cron:') || rawText.includes('A new session was started via')) {
     return '';
   }
 
   let text = rawText;
-  text = text.replace(/<ADDITIONAL_METADATA>[\s\S]*?<\/ADDITIONAL_METADATA>/g, '');
-  text = text.replace(/<USER_SETTINGS_CHANGE>[\s\S]*?<\/USER_SETTINGS_CHANGE>/g, '');
-  text = text.replace(/<SYSTEM_MESSAGE>[\s\S]*?<\/SYSTEM_MESSAGE>/g, '');
-  text = text.replace(/<ide_opened_file>[\s\S]*?<\/ide_opened_file>/g, '');
-  text = text.replace(/<ide_selection>[\s\S]*?<\/ide_selection>/g, '');
-  text = text.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '');
-  text = text.replace(/<local-command-stdout>[\s\S]*?<\/local-command-stdout>/g, '');
-  text = text.replace(/<local-command-caveat>[\s\S]*?<\/local-command-caveat>/g, '');
-  text = text.replace(/<task-notification>[\s\S]*?<\/task-notification>/g, '');
-  text = text.replace(/<user-prompt-submit-hook>[\s\S]*?<\/user-prompt-submit-hook>/g, '');
-  text = text.replace(/<bash-input>[\s\S]*?<\/bash-input>/g, '');
-  text = text.replace(/<bash-stdout>[\s\S]*?<\/bash-stdout>/g, '');
-  text = text.replace(/<bash-stderr>[\s\S]*?<\/bash-stderr>/g, '');
-  text = text.replace(/<ultraplan>[\s\S]*?<\/ultraplan>/g, '');
-  text = text.replace(/<skill>[\s\S]*?<\/skill>/g, '');
-  text = text.replace(/<subagent_notification>[\s\S]*?<\/subagent_notification>/g, '');
-  text = text.replace(/<turn_aborted>[\s\S]*?<\/turn_aborted>/g, '');
-  text = text.replace(/<system_instruction>[\s\S]*?<\/system_instruction>/g, '');
+  if (text.includes('<')) {
+    text = text.replace(STRIPPED_XML_TAG_REGEX, '');
 
-  if (text.includes('<command-name>')) {
     const cmdNameMatch = text.match(/<command-name>\s*([\s\S]*?)\s*<\/command-name>/);
-    const cmdArgsMatch = text.match(/<command-args>\s*([\s\S]*?)\s*<\/command-args>/);
-    const cmdName = cmdNameMatch ? cmdNameMatch[1].trim() : '';
-    const cmdArgs = cmdArgsMatch ? cmdArgsMatch[1].trim() : '';
-    if (!cmdArgs || /^\/?(?:clear|compact|login|logout|model|resume|mcp|init|config|doctor|cost|status|permissions|terminal-setup|vim|memory|help|quit|exit)$/i.test(cmdName)) {
-      return '';
+    if (cmdNameMatch) {
+      const cmdArgsMatch = text.match(/<command-args>\s*([\s\S]*?)\s*<\/command-args>/);
+      const cmdName = cmdNameMatch[1].trim();
+      const cmdArgs = cmdArgsMatch ? cmdArgsMatch[1].trim() : '';
+      if (/^\/?(?:clear|compact|login|logout|model|resume|mcp|init|config|doctor|cost|status|permissions|terminal-setup|vim|memory|help|quit|exit)$/i.test(cmdName)) {
+        return '';
+      }
+      if (cmdArgs) {
+        text = cmdArgs;
+      } else {
+        text = text.replace(/<command-(?:name|message|args)>[\s\S]*?<\/command-(?:name|message|args)>/g, '');
+      }
+    } else {
+      text = text.replace(/<command-(?:message|args)>[\s\S]*?<\/command-(?:message|args)>/g, '');
     }
-    text = cmdArgs;
-  } else {
-    text = text.replace(/<command-message>[\s\S]*?<\/command-message>/g, '');
-    text = text.replace(/<command-args>[\s\S]*?<\/command-args>/g, '');
-  }
 
-  const userRequestMatch = text.match(/<USER_REQUEST>\s*([\s\S]*?)\s*<\/USER_REQUEST>/);
-  if (userRequestMatch) {
-    text = userRequestMatch[1];
+    const userRequestMatch = text.match(/<USER_REQUEST>\s*([\s\S]*?)\s*<\/USER_REQUEST>/);
+    if (userRequestMatch) {
+      text = userRequestMatch[1];
+    }
   }
 
   const trimmedInitial = text.trim();
@@ -318,7 +334,7 @@ function cleanUserText(rawText, subjectNames = new Set(), automatedPrompts = new
 
   text = text.replace(/^System(?: \([^)]+\))?: \[.*?\][\s\S]*?(?=\r?\n\s*\r?\n|$)/gm, '');
   text = text.replace(/^Action:\s.*$/gm, '');
-  text = text.replace(/Sender \(untrusted metadata\):[\s\S]*?```[\s\S]*?```\n*/g, '');
+  text = text.replace(/Sender \(untrusted metadata\):[^\r\n]*\r?\n```[\s\S]*?```\n*/g, '');
   text = text.replace(/^\[[^\r\n\]]*\]\s*/gm, '');
   text = text.replace(/^Current time:.*$/gm, '');
   text = text.replace(/```[\s\S]*?```/g, '');
@@ -327,7 +343,6 @@ function cleanUserText(rawText, subjectNames = new Set(), automatedPrompts = new
   text = stripUnfencedJsonBlocks(text);
   text = stripPasteLeadInBlocks(text);
   text = text.replace(/"\[@[^\]]+\]\([^)]+\)[^"]*"/g, '');
-  text = text.replace(/"[^"\n]*(?:\r?\n[^"\n]*){2,}"/g, '');
   text = text.replace(/[ \t]{2,}/g, ' ');
 
   const paragraphs = text
@@ -336,9 +351,11 @@ function cleanUserText(rawText, subjectNames = new Set(), automatedPrompts = new
     .filter(p => !isContaminatedParagraph(p, subjectNames));
 
   text = paragraphs.join('\n\n').trim();
-  if (automatedPrompts.has(text)) return '';
+  if (!text || automatedPrompts.has(text)) return '';
 
-  return text.length > 10 ? text : '';
+  const redacted = redact(text, anonymized);
+  const substantive = redacted.replace(/\[REDACTED_[A-Z_]+\]/g, '').trim();
+  return substantive.length > 10 ? redacted : '';
 }
 
 function readVarint(buf, offset) {
@@ -357,7 +374,11 @@ function readVarint(buf, offset) {
 
 function isSidecarRawSummary(rawSummary, convId, sidecarIds) {
   if (!rawSummary) return false;
-  const buf = Buffer.from(rawSummary);
+  const buf = Buffer.isBuffer(rawSummary)
+    ? rawSummary
+    : ArrayBuffer.isView(rawSummary)
+      ? Buffer.from(rawSummary.buffer, rawSummary.byteOffset, rawSummary.byteLength)
+      : Buffer.from(rawSummary);
   const str = buf.toString('utf8');
 
   if (
@@ -476,7 +497,21 @@ function collectAutomationMetadata(homeDir) {
   return { automatedPrompts, sidecarIds, sidecarConvIds, registerPrompt };
 }
 
-async function collectAntigravityMessages(homeDir, now, subjectNames, automationMeta) {
+function statTranscript(logsDir) {
+  const fullPath = path.join(logsDir, 'transcript_full.jsonl');
+  try {
+    return { targetPath: fullPath, stats: fs.statSync(fullPath) };
+  } catch (e) {}
+
+  const compactPath = path.join(logsDir, 'transcript.jsonl');
+  try {
+    return { targetPath: compactPath, stats: fs.statSync(compactPath) };
+  } catch (e) {}
+
+  return null;
+}
+
+async function collectAntigravityMessages(homeDir, now, subjectNames, automationMeta, anonymized) {
   const messages = [];
   const geminiDir = path.join(homeDir, '.gemini');
   const agyDirs = [];
@@ -496,6 +531,38 @@ async function collectAntigravityMessages(homeDir, now, subjectNames, automation
   const subagentConvIds = new Set();
 
   for (const agyDir of agyDirs) {
+    const brainDir = path.join(agyDir, 'brain');
+    if (!fs.existsSync(brainDir)) continue;
+
+    let conversations = [];
+    try {
+      conversations = fs.readdirSync(brainDir, { withFileTypes: true })
+        .filter(dirent => dirent.isDirectory())
+        .map(dirent => dirent.name);
+    } catch (e) {
+      checkAccess(e);
+      continue;
+    }
+
+    const recentConversations = [];
+    const recentConvIdSet = new Set();
+
+    for (const convId of conversations) {
+      const logsDir = path.join(brainDir, convId, '.system_generated/logs');
+      const found = statTranscript(logsDir);
+      if (!found) continue;
+      if (now - found.stats.mtimeMs <= TWENTY_FOUR_HOURS) {
+        recentConversations.push({
+          convId,
+          targetPath: found.targetPath,
+          mtimeMs: found.stats.mtimeMs
+        });
+        recentConvIdSet.add(convId);
+      }
+    }
+
+    if (recentConversations.length === 0) continue;
+
     const sidecarDataDir = path.join(agyDir, 'sidecar_data');
     if (fs.existsSync(sidecarDataDir)) {
       try {
@@ -530,7 +597,7 @@ async function collectAntigravityMessages(homeDir, now, subjectNames, automation
           const rows = db.prepare('SELECT conversation_id, nesting_depth, parent_conversation_id, agent_name, raw_summary FROM conversation_summaries').all();
           for (const row of rows) {
             const cid = row.conversation_id;
-            if (!cid) continue;
+            if (!cid || !recentConvIdSet.has(cid)) continue;
             if ((row.nesting_depth && row.nesting_depth > 0) || row.parent_conversation_id || row.agent_name) {
               subagentConvIds.add(cid);
               continue;
@@ -545,37 +612,8 @@ async function collectAntigravityMessages(homeDir, now, subjectNames, automation
       } catch (e) {}
     }
 
-    const brainDir = path.join(agyDir, 'brain');
-    if (!fs.existsSync(brainDir)) continue;
-
-    let conversations = [];
-    try {
-      conversations = fs.readdirSync(brainDir, { withFileTypes: true })
-        .filter(dirent => dirent.isDirectory())
-        .map(dirent => dirent.name);
-    } catch (e) {
-      checkAccess(e);
-      continue;
-    }
-
-    for (const convId of conversations) {
+    for (const { convId, targetPath, mtimeMs } of recentConversations) {
       if (subagentConvIds.has(convId)) continue;
-
-      const logsDir = path.join(brainDir, convId, '.system_generated/logs');
-      const fullPath = path.join(logsDir, 'transcript_full.jsonl');
-      const compactPath = path.join(logsDir, 'transcript.jsonl');
-      const targetPath = fs.existsSync(fullPath) ? fullPath : (fs.existsSync(compactPath) ? compactPath : null);
-
-      if (!targetPath) continue;
-
-      let stats;
-      try {
-        stats = fs.statSync(targetPath);
-      } catch (e) {
-        continue;
-      }
-
-      if (now - stats.mtimeMs > TWENTY_FOUR_HOURS) continue;
 
       let lines = [];
       try {
@@ -597,9 +635,9 @@ async function collectAntigravityMessages(homeDir, now, subjectNames, automation
             if (isSidecarConv && isInitialStep) {
               continue;
             }
-            const ts = (entry.created_at ? new Date(entry.created_at).getTime() : 0) || stats.mtimeMs;
+            const ts = parseTimestamp(entry.created_at, mtimeMs);
             if (now - ts <= TWENTY_FOUR_HOURS) {
-              const cleaned = cleanUserText(entry.content, subjectNames, automatedPrompts);
+              const cleaned = cleanUserText(entry.content, subjectNames, automatedPrompts, anonymized);
               if (cleaned) {
                 messages.push({ timestamp: ts, text: cleaned });
               }
@@ -618,7 +656,7 @@ function isNonHumanOpenClawValue(val) {
   return /\b(?:subagent|cron|system|automation|daemon|webhook|inter_session|hook|heartbeat)\b/i.test(val);
 }
 
-function parseOpenClawEntry(entry, fallbackTs, now, messages, subjectNames, automatedPrompts, nonHumanSessionIds = new Set()) {
+function parseOpenClawEntry(entry, fallbackTs, now, messages, subjectNames, automatedPrompts, nonHumanSessionIds = new Set(), anonymized = false) {
   if (!entry || entry.type !== 'message' || entry.message?.role !== 'user') return;
 
   const entrySessionId = entry.sessionId || entry.session_id || entry.sessionKey || entry.session_key || '';
@@ -639,21 +677,24 @@ function parseOpenClawEntry(entry, fallbackTs, now, messages, subjectNames, auto
   }
 
   const messageContent = Array.isArray(entry.message.content)
-    ? entry.message.content.find(c => c.type === 'text')?.text || ''
+    ? entry.message.content
+      .filter(c => c.type === 'text' && typeof c.text === 'string')
+      .map(c => c.text)
+      .join('\n')
     : typeof entry.message.content === 'string' ? entry.message.content : '';
 
-  const rawTs = entry.message.timestamp || entry.timestamp || fallbackTs;
-  const ts = new Date(rawTs).getTime() || fallbackTs;
+  const rawTs = entry.message.timestamp || entry.timestamp;
+  const ts = parseTimestamp(rawTs, fallbackTs);
 
-  if (now - ts <= TWENTY_FOUR_HOURS) {
-    const cleaned = cleanUserText(messageContent, subjectNames, automatedPrompts);
+  if (ts > 0 && now - ts <= TWENTY_FOUR_HOURS) {
+    const cleaned = cleanUserText(messageContent, subjectNames, automatedPrompts, anonymized);
     if (cleaned) {
       messages.push({ timestamp: ts, text: cleaned });
     }
   }
 }
 
-async function collectOpenClawMessages(homeDir, now, subjectNames, automatedPrompts) {
+async function collectOpenClawMessages(homeDir, now, subjectNames, automatedPrompts, anonymized) {
   const messages = [];
   const nonHumanSessionIds = new Set();
   const sessionsDir = path.join(homeDir, '.openclaw/agents/main/sessions');
@@ -702,6 +743,9 @@ async function collectOpenClawMessages(homeDir, now, subjectNames, automatedProm
               rawJson = zlib.zstdDecompressSync(row.event_zstd).toString('utf8');
             }
             if (!rawJson) continue;
+            if (!rawJson.includes('"session"') && !(rawJson.includes('"message"') && rawJson.includes('"user"'))) {
+              continue;
+            }
             try {
               const entry = JSON.parse(rawJson);
               if (entry?.type === 'session') {
@@ -716,13 +760,13 @@ async function collectOpenClawMessages(homeDir, now, subjectNames, automatedProm
                   if (sid) nonHumanSessionIds.add(sid);
                   if (skey) nonHumanSessionIds.add(skey);
                 }
-              } else {
+              } else if (entry?.type === 'message' && entry.message?.role === 'user') {
                 parsedEvents.push(entry);
               }
             } catch (e) {}
           }
           for (const entry of parsedEvents) {
-            parseOpenClawEntry(entry, latestMtime, now, messages, subjectNames, automatedPrompts, nonHumanSessionIds);
+            parseOpenClawEntry(entry, 0, now, messages, subjectNames, automatedPrompts, nonHumanSessionIds, anonymized);
           }
         } finally {
           db.close();
@@ -783,7 +827,7 @@ async function collectOpenClawMessages(homeDir, now, subjectNames, automatedProm
           }
           continue;
         }
-        parseOpenClawEntry(entry, stats.mtimeMs, now, messages, subjectNames, automatedPrompts, nonHumanSessionIds);
+        parseOpenClawEntry(entry, stats.mtimeMs, now, messages, subjectNames, automatedPrompts, nonHumanSessionIds, anonymized);
       } catch (e) {}
     }
   }
@@ -791,7 +835,7 @@ async function collectOpenClawMessages(homeDir, now, subjectNames, automatedProm
   return messages;
 }
 
-function collectClaudeCodeMessages(homeDir, now, subjectNames, automatedPrompts) {
+function collectClaudeCodeMessages(homeDir, now, subjectNames, automatedPrompts, anonymized) {
   const messages = [];
   const projectsDir = path.join(homeDir, '.claude/projects');
   if (!fs.existsSync(projectsDir)) return messages;
@@ -854,11 +898,10 @@ function collectClaudeCodeMessages(homeDir, now, subjectNames, automatedPrompts)
                 .join('\n')
               : typeof entry.message.content === 'string' ? entry.message.content : '';
 
-            const rawTs = entry.timestamp || stats.mtimeMs;
-            const ts = new Date(rawTs).getTime() || stats.mtimeMs;
+            const ts = parseTimestamp(entry.timestamp, stats.mtimeMs);
 
             if (now - ts <= TWENTY_FOUR_HOURS) {
-              const cleaned = cleanUserText(messageContent, subjectNames, automatedPrompts);
+              const cleaned = cleanUserText(messageContent, subjectNames, automatedPrompts, anonymized);
               if (cleaned) {
                 messages.push({ timestamp: ts, text: cleaned });
               }
@@ -872,7 +915,7 @@ function collectClaudeCodeMessages(homeDir, now, subjectNames, automatedPrompts)
   return messages;
 }
 
-function collectCodexMessages(homeDir, now, subjectNames, automatedPrompts) {
+function collectCodexMessages(homeDir, now, subjectNames, automatedPrompts, anonymized) {
   const messages = [];
   const codexDir = process.env.CODEX_HOME || path.join(homeDir, '.codex');
   const sessionsDir = path.join(codexDir, 'sessions');
@@ -939,11 +982,10 @@ function collectCodexMessages(homeDir, now, subjectNames, automatedPrompts) {
             ));
 
           const messageContent = textBlocks.join('\n');
-          const rawTs = entry.timestamp || stats.mtimeMs;
-          const ts = new Date(rawTs).getTime() || stats.mtimeMs;
+          const ts = parseTimestamp(entry.timestamp, stats.mtimeMs);
 
           if (now - ts <= TWENTY_FOUR_HOURS) {
-            const cleaned = cleanUserText(messageContent, subjectNames, automatedPrompts);
+            const cleaned = cleanUserText(messageContent, subjectNames, automatedPrompts, anonymized);
             if (cleaned) {
               messages.push({ timestamp: ts, text: cleaned });
             }
@@ -963,12 +1005,34 @@ function commitLensRepo() {
   }
 
   try {
+    const gitignorePath = path.join(LENS_DIR, '.gitignore');
+    const gitignoreContent = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, 'utf8') : '';
+    const gitignoreLines = gitignoreContent.split(/\r?\n/).map(l => l.trim());
+    if (!gitignoreLines.includes('TRACE.txt')) {
+      const prefix = gitignoreContent && !gitignoreContent.endsWith('\n') ? '\n' : '';
+      fs.writeFileSync(gitignorePath, `${gitignoreContent}${prefix}TRACE.txt\n`, 'utf8');
+    }
+
+    const trackedTrace = execFileSync('git', ['ls-files', '--', 'TRACE.txt'], {
+      cwd: LENS_DIR,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim();
+
+    if (trackedTrace) {
+      execFileSync('git', ['rm', '--cached', '--ignore-unmatch', '--', 'TRACE.txt'], {
+        cwd: LENS_DIR,
+        stdio: 'ignore'
+      });
+    }
+
     const existingFiles = CANONICAL_LENS_FILES.filter(f => fs.existsSync(path.join(LENS_DIR, f)));
-    if (existingFiles.length === 0) {
+    const commitTargets = [...(trackedTrace ? ['TRACE.txt'] : []), ...existingFiles];
+    if (commitTargets.length === 0) {
       return;
     }
 
-    const status = execFileSync('git', ['status', '--porcelain', '--', ...existingFiles], {
+    const status = execFileSync('git', ['status', '--porcelain', '--', ...commitTargets], {
       cwd: LENS_DIR,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore']
@@ -988,7 +1052,9 @@ function commitLensRepo() {
       commitMsg = `Distill ${modifiedNodes.join(', ')}.`;
     }
 
-    execFileSync('git', ['add', '--', ...existingFiles], { cwd: LENS_DIR, stdio: 'ignore' });
+    if (existingFiles.length > 0) {
+      execFileSync('git', ['add', '--', ...existingFiles], { cwd: LENS_DIR, stdio: 'ignore' });
+    }
     execFileSync('git', ['commit', '-m', commitMsg], { cwd: LENS_DIR, stdio: 'ignore' });
 
     try {
@@ -1000,31 +1066,28 @@ function commitLensRepo() {
 }
 
 async function distillation() {
-  await preflight('distillation');
+  const { scope } = preflight('distillation');
 
-  const scopePath = path.join(LENS_DIR, 'SCOPE.json');
   const outputFile = path.join(LENS_DIR, 'TRACE.txt');
-  let anonymized = false;
+  const anonymized = scope?.meta?.anonymize === true;
+  const enabledSources = Array.isArray(scope?.distillation?.sources)
+    ? new Set(
+      scope.distillation.sources
+        .filter(s => typeof s === 'string')
+        .map(s => s.trim().toLowerCase())
+    )
+    : new Set(DEFAULT_SOURCES);
 
-  if (fs.existsSync(scopePath)) {
-    try {
-      const scope = JSON.parse(fs.readFileSync(scopePath, 'utf8'));
-      anonymized = scope.meta?.anonymize === true;
-    } catch (e) {
-      checkAccess(e);
-    }
-  }
-
-  const homeDir = process.env.HOME || os.homedir() || '';
+  const homeDir = HOME_DIR || '';
   const now = Date.now();
   const subjectNames = getSubjectNameTokens();
   const automationMeta = collectAutomationMetadata(homeDir);
 
   const rawMessages = [
-    ...(await collectAntigravityMessages(homeDir, now, subjectNames, automationMeta)),
-    ...(await collectOpenClawMessages(homeDir, now, subjectNames, automationMeta.automatedPrompts)),
-    ...collectClaudeCodeMessages(homeDir, now, subjectNames, automationMeta.automatedPrompts),
-    ...collectCodexMessages(homeDir, now, subjectNames, automationMeta.automatedPrompts)
+    ...(enabledSources.has('antigravity') ? await collectAntigravityMessages(homeDir, now, subjectNames, automationMeta, anonymized) : []),
+    ...(enabledSources.has('openclaw') ? await collectOpenClawMessages(homeDir, now, subjectNames, automationMeta.automatedPrompts, anonymized) : []),
+    ...(enabledSources.has('claude') ? collectClaudeCodeMessages(homeDir, now, subjectNames, automationMeta.automatedPrompts, anonymized) : []),
+    ...(enabledSources.has('codex') ? collectCodexMessages(homeDir, now, subjectNames, automationMeta.automatedPrompts, anonymized) : [])
   ];
 
   rawMessages.sort((a, b) => a.timestamp - b.timestamp);
@@ -1044,12 +1107,12 @@ async function distillation() {
       throw e;
     }
     console.log('TRACE_EMPTY');
-    process.exit(0);
+    return;
   }
 
   const formattedOutput = userMessages.map(m => m.text).join('\n---\n');
   try {
-    fs.writeFileSync(outputFile, redact(formattedOutput, anonymized) + '\n', 'utf8');
+    fs.writeFileSync(outputFile, formattedOutput + '\n', 'utf8');
   } catch (e) {
     checkAccess(e);
     throw e;

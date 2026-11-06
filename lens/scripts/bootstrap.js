@@ -6,10 +6,9 @@ import { fileURLToPath, pathToFileURL } from 'url';
 const __filename = fs.realpathSync(fileURLToPath(import.meta.url));
 const __dirname = path.dirname(__filename);
 export const SKILL_DIR = path.resolve(__dirname, '..');
-const parentDir = path.dirname(SKILL_DIR);
-export const WORKSPACE_DIR = path.basename(parentDir) === 'skills' ? path.dirname(parentDir) : parentDir;
-const HOME_DIR = process.env.HOME || os.homedir();
+export const HOME_DIR = process.env.HOME || os.homedir();
 export const LENS_DIR = path.join(HOME_DIR, '.lens');
+export const DEFAULT_SOURCES = ['antigravity', 'openclaw', 'claude', 'codex'];
 
 export function checkAccess(err) {
   if (err && (err.code === 'EPERM' || err.code === 'EACCES')) {
@@ -26,136 +25,31 @@ const isMain = Boolean(
   fs.realpathSync(path.resolve(process.argv[1])) === __filename
 );
 
-function migrate(action, scope) {
-  if (action === 'dir') {
-    const candidates = new Set([
-      path.join(WORKSPACE_DIR, '.lens'),
-      path.join(process.cwd(), '.lens')
-    ]);
-    try {
-      const openclawConfigPath = path.join(HOME_DIR, '.openclaw/openclaw.json');
-      if (fs.existsSync(openclawConfigPath)) {
-        const config = JSON.parse(fs.readFileSync(openclawConfigPath, 'utf8'));
-        const ws = config.agents?.defaults?.workspace;
-        if (ws) candidates.add(path.join(ws, '.lens'));
-      }
-    } catch (e) {}
-
-    for (const legacyLensDir of candidates) {
-      if (legacyLensDir !== LENS_DIR && fs.existsSync(legacyLensDir)) {
-        try {
-          if (!fs.existsSync(LENS_DIR)) {
-            try {
-              fs.renameSync(legacyLensDir, LENS_DIR);
-            } catch (renameErr) {
-              checkAccess(renameErr);
-              fs.cpSync(legacyLensDir, LENS_DIR, { recursive: true });
-              fs.rmSync(legacyLensDir, { recursive: true, force: true });
-            }
-          } else {
-            const templatesDir = path.join(__dirname, 'templates');
-            const entries = fs.readdirSync(legacyLensDir);
-            for (const item of entries) {
-              const src = path.join(legacyLensDir, item);
-              const dest = path.join(LENS_DIR, item);
-              const templateFile = path.join(templatesDir, item);
-              const isDefaultTemplate = (
-                fs.existsSync(dest) &&
-                fs.existsSync(templateFile) &&
-                fs.readFileSync(dest, 'utf8') === fs.readFileSync(templateFile, 'utf8')
-              );
-              if (!fs.existsSync(dest) || isDefaultTemplate) {
-                fs.cpSync(src, dest, { recursive: true, force: true });
-              }
-            }
-            fs.rmSync(legacyLensDir, { recursive: true, force: true });
-          }
-        } catch (e) {
-          checkAccess(e);
-        }
-      }
-    }
-  }
-
-  if (action === 'paths') {
-    const backupPaths = [
-      { old: path.join(LENS_DIR, 'AXIOM.md'), bak: 'axiom.md.bak' },
-      { old: path.join(LENS_DIR, 'ETHOS.md'), bak: 'ethos.md.bak' },
-      { old: path.join(LENS_DIR, 'MODUS.md'), bak: 'modus.md.bak' },
-      { old: path.join(LENS_DIR, 'SET.json'), bak: 'set.json.bak' },
-      { old: path.join(__dirname, 'transcripts.txt'), bak: 'transcripts.txt.bak.1' },
-      { old: path.join(LENS_DIR, 'transcripts.txt'), bak: 'transcripts.txt.bak.2' }
-    ];
-    backupPaths.forEach(backupPath => {
-      if (fs.existsSync(backupPath.old)) {
-        try {
-          fs.renameSync(backupPath.old, path.join(LENS_DIR, backupPath.bak));
-        } catch (e) {}
-      }
-    });
-
-    const createPaths = [
-      { new: path.join(LENS_DIR, 'AXIOM.yaml'), bak: 'axiom.md.bak' },
-      { new: path.join(LENS_DIR, 'ETHOS.yaml'), bak: 'ethos.md.bak' },
-      { new: path.join(LENS_DIR, 'MODUS.yaml'), bak: 'modus.md.bak' },
-      { new: path.join(LENS_DIR, 'SCOPE.json'), bak: 'set.json.bak' }
-    ];
-    createPaths.forEach(createPath => {
-      if (!fs.existsSync(createPath.new) && fs.existsSync(path.join(LENS_DIR, createPath.bak))) {
-        const baseName = path.parse(createPath.new).name;
-
-        if (baseName === 'SCOPE') {
-          fs.renameSync(path.join(LENS_DIR, createPath.bak), createPath.new);
-        } else {
-          fs.writeFileSync(createPath.new, `title: "MIGRATION REQUIRED - ${baseName}"\nSYSTEM_ALERT: "CRITICAL INSTRUCTION: The LENS system has upgraded to YAML. Before continuing with your primary mission, you MUST read the legacy file at ~/.lens/${createPath.bak}. Translate its entire contents into a highly structured, deeply nested YAML format (preserving all user data), and completely overwrite THIS file (~/.lens/${baseName}.yaml) with the new structure."\n`);
-        }
-      }
-    });
-  }
-
-  if (action === 'scope') {
-    const axiomBakPath = path.join(LENS_DIR, 'axiom.md.bak');
-
-    if (fs.existsSync(axiomBakPath)) {
-      const axiomBak = fs.readFileSync(axiomBakPath, 'utf8');
-
-      if (axiomBak.includes('Interview Phase:')) {
-        const phaseMatch = axiomBak.match(/Interview Phase: (\d+)-(\d+)-(\d+)/);
-        if (phaseMatch) {
-          const [_, init, stab] = phaseMatch.map(Number);
-          if (init > 0) {
-            scope.interview.phase = "onboarding";
-            scope.interview.questions = init;
-          } else if (stab > 0) {
-            scope.interview.phase = "stabilizing";
-            scope.interview.questions = stab;
-          } else {
-            scope.interview.phase = "habitual";
-            scope.interview.questions = true;
-          }
-        }
-      }
-
-      if (axiomBak.includes('Installation Date:')) {
-        const dateMatch = axiomBak.match(/Installation Date: (\d{4}-\d{2}-\d{2})/);
-        if (dateMatch) scope.meta.installed = dateMatch[1];
-      }
-    }
-  }
-}
-
-function getUserTimezone() {
+function readOpenClawConfig() {
   try {
-    const homeDir = process.env.HOME || os.homedir();
-    if (homeDir) {
-      const configPath = path.join(homeDir, '.openclaw/openclaw.json');
+    if (HOME_DIR) {
+      const configPath = path.join(HOME_DIR, '.openclaw/openclaw.json');
       if (fs.existsSync(configPath)) {
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        return config.agents?.defaults?.userTimezone;
+        return JSON.parse(fs.readFileSync(configPath, 'utf8'));
       }
     }
   } catch (e) {}
   return null;
+}
+
+function getInterviewCronExpr(phase) {
+  if (phase === 'stabilizing') return '30 11 * * *';
+  if (phase === 'habitual') return '30 11 * * 3';
+  return '30 11,17 * * *';
+}
+
+function writeFileIfChanged(filePath, content) {
+  if (fs.existsSync(filePath)) {
+    try {
+      if (fs.readFileSync(filePath, 'utf8') === content) return;
+    } catch (e) {}
+  }
+  fs.writeFileSync(filePath, content, 'utf8');
 }
 
 function ensureSkillLink(linkPath, reboot = false) {
@@ -167,13 +61,21 @@ function ensureSkillLink(linkPath, reboot = false) {
 
     if (stat) {
       if (stat.isSymbolicLink()) {
-        const currentTarget = path.resolve(path.dirname(linkPath), fs.readlinkSync(linkPath));
-        if (currentTarget === SKILL_DIR && fs.existsSync(linkPath)) {
+        let resolvedTarget = null;
+        try {
+          resolvedTarget = fs.realpathSync(linkPath);
+        } catch (e) {}
+        if (resolvedTarget === SKILL_DIR) {
           return linkPath;
+        }
+        const rawTarget = path.resolve(path.dirname(linkPath), fs.readlinkSync(linkPath));
+        const isBrokenOrLensTarget = !resolvedTarget || path.basename(rawTarget) === 'lens';
+        if (reboot && !isBrokenOrLensTarget) {
+          return null;
         }
         fs.unlinkSync(linkPath);
       } else {
-        return linkPath;
+        return null;
       }
     }
 
@@ -186,7 +88,7 @@ function ensureSkillLink(linkPath, reboot = false) {
   }
 }
 
-function syncSkillLinks(reboot = false) {
+function syncSkillLinks(reboot = false, openclawConfig = null) {
   const linked = [];
   if (!HOME_DIR) return linked;
 
@@ -201,7 +103,8 @@ function syncSkillLinks(reboot = false) {
       if (fs.existsSync(skillsJsonPath)) {
         try {
           const raw = fs.readFileSync(skillsJsonPath, 'utf8');
-          if (raw.includes(SKILL_DIR) || raw.includes(WORKSPACE_DIR)) {
+          const escapedSkillDir = SKILL_DIR.replace(/\\/g, '\\\\');
+          if (raw.includes(SKILL_DIR) || raw.includes(escapedSkillDir)) {
             coveredBySkillsJson = true;
             linked.push(skillsJsonPath);
           }
@@ -226,19 +129,15 @@ function syncSkillLinks(reboot = false) {
     if (codexLink) linked.push(codexLink);
   }
 
-  const openclawDir = path.join(HOME_DIR, '.openclaw');
-  if (fs.existsSync(openclawDir)) {
-    try {
-      const configPath = path.join(openclawDir, 'openclaw.json');
-      if (fs.existsSync(configPath)) {
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        const ws = config.agents?.defaults?.workspace;
-        if (ws && fs.existsSync(ws)) {
-          const wsLink = ensureSkillLink(path.join(ws, 'skills', 'lens'), reboot);
-          if (wsLink) linked.push(wsLink);
-        }
+  if (openclawConfig) {
+    const rawWs = openclawConfig.agents?.defaults?.workspace;
+    if (typeof rawWs === 'string' && rawWs.trim()) {
+      const ws = rawWs.startsWith('~/') ? path.join(HOME_DIR, rawWs.slice(2)) : rawWs;
+      if (fs.existsSync(ws)) {
+        const wsLink = ensureSkillLink(path.join(ws, 'skills', 'lens'), reboot);
+        if (wsLink) linked.push(wsLink);
       }
-    } catch (e) {}
+    }
   }
 
   return linked;
@@ -305,6 +204,7 @@ function syncAntigravitySidecars(timezone, interviewExpr, distillationPrompt, in
           workspace_uris: [lensWorkspaceUri],
           access_grants: [
             `command(node ${interviewScript})`,
+            `command(node ${distillationScript})`,
             `command(node ${distillationScript} --commit)`,
             `command(node ${bootstrapScript})`,
             `read_file(${LENS_DIR})`,
@@ -321,7 +221,7 @@ function syncAntigravitySidecars(timezone, interviewExpr, distillationPrompt, in
       const dir = path.join(sidecarsRoot, def.id);
       const filePath = path.join(dir, 'sidecar.json');
       fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(filePath, JSON.stringify(def.config, null, 2) + '\n', 'utf8');
+      writeFileIfChanged(filePath, JSON.stringify(def.config, null, 2) + '\n');
       synced.push(filePath);
     } catch (e) {
       if (!reboot) checkAccess(e);
@@ -331,9 +231,7 @@ function syncAntigravitySidecars(timezone, interviewExpr, distillationPrompt, in
   return synced;
 }
 
-export async function bootstrap(reboot = false) {
-  migrate('dir');
-
+export function bootstrap(reboot = false) {
   try {
     if (!fs.existsSync(LENS_DIR)) fs.mkdirSync(LENS_DIR, { recursive: true });
   } catch (e) {
@@ -347,11 +245,9 @@ export async function bootstrap(reboot = false) {
   const readmePath = path.join(LENS_DIR, 'README.md');
   const scopePath = path.join(LENS_DIR, 'SCOPE.json');
   const tracePath = path.join(LENS_DIR, 'TRACE.txt');
-  const hadScope = fs.existsSync(scopePath) || fs.existsSync(path.join(LENS_DIR, 'SET.json'));
 
-  migrate('paths');
-
-  const timezone = getUserTimezone() || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const openclawConfig = readOpenClawConfig();
+  const timezone = openclawConfig?.agents?.defaults?.userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
   let scope = {
     meta: {
@@ -359,15 +255,12 @@ export async function bootstrap(reboot = false) {
       installed: new Date().toISOString().split('T')[0],
       anonymize: false
     },
-    interview: { phase: "onboarding", questions: 15, model: "" },
-    distillation: { model: "" }
+    interview: { phase: 'onboarding', questions: 15, model: '' },
+    distillation: {
+      model: '',
+      sources: [...DEFAULT_SOURCES]
+    }
   };
-
-  if (!hadScope) {
-    migrate('scope', scope);
-  }
-
-  let interviewExpr = "30 11,17 * * *";
 
   if (fs.existsSync(scopePath)) {
     try {
@@ -376,6 +269,9 @@ export async function bootstrap(reboot = false) {
       scope.meta = { ...scope.meta, ...(existing.meta || {}) };
       scope.interview = { ...scope.interview, ...(existing.interview || {}) };
       scope.distillation = { ...scope.distillation, ...(existing.distillation || {}) };
+      if (!Array.isArray(scope.distillation.sources)) {
+        scope.distillation.sources = [...DEFAULT_SOURCES];
+      }
       if (priorVersion && !priorVersion.startsWith('2.')) {
         if (scope.interview.model === 'google/gemini-3.1-pro-preview') scope.interview.model = '';
         if (scope.distillation.model === 'google/gemini-3.1-pro-preview') scope.distillation.model = '';
@@ -399,37 +295,33 @@ export async function bootstrap(reboot = false) {
     }
   }
 
-  if (scope.interview.phase === 'stabilizing') {
-    interviewExpr = "30 11 * * *";
-  } else if (scope.interview.phase === 'habitual') {
-    interviewExpr = "30 11 * * 3";
-  }
+  const interviewExpr = getInterviewCronExpr(scope.interview.phase);
 
   const distillationPrompt = `Run \`node ${path.join(__dirname, 'distillation.js')}\`. If the output is 'TRACE_EMPTY', reply with ONLY: NO_REPLY and stop. If the output includes 'DISTILLATION_READY', read \`${path.join(SKILL_DIR, 'prompts/distillation.md')}\` and follow it strictly.`;
   const interviewPrompt = `Run \`node ${path.join(__dirname, 'interview.js')}\`. If the output includes 'INTERVIEW_READY', read \`${path.join(SKILL_DIR, 'prompts/interview.md')}\` and follow it strictly. Generate a single question for the human and stop.`;
 
   const jobs = [
     {
-      id: "lens-distillation",
-      name: "lens-distillation",
-      schedule: { kind: "cron", expr: "0 3 * * *", tz: timezone },
-      sessionTarget: "isolated",
+      id: 'lens-distillation',
+      name: 'lens-distillation',
+      schedule: { kind: 'cron', expr: '0 3 * * *', tz: timezone },
+      sessionTarget: 'isolated',
       payload: {
-        kind: "agentTurn",
+        kind: 'agentTurn',
         message: distillationPrompt,
         model: scope.distillation.model || undefined
       },
       delivery: {
-        mode: "none"
+        mode: 'none'
       }
     },
     {
-      id: "lens-interview",
-      name: "lens-interview",
-      schedule: { kind: "cron", expr: interviewExpr, tz: timezone },
-      sessionTarget: "main",
+      id: 'lens-interview',
+      name: 'lens-interview',
+      schedule: { kind: 'cron', expr: interviewExpr, tz: timezone },
+      sessionTarget: 'main',
       payload: {
-        kind: "systemEvent",
+        kind: 'systemEvent',
         text: interviewPrompt,
         model: scope.interview.model || undefined
       }
@@ -437,28 +329,28 @@ export async function bootstrap(reboot = false) {
   ];
 
   try {
-    fs.writeFileSync(scopePath, JSON.stringify(scope, null, 2) + '\n');
+    writeFileIfChanged(scopePath, JSON.stringify(scope, null, 2) + '\n');
     if (!fs.existsSync(tracePath)) fs.writeFileSync(tracePath, '', 'utf8');
 
     const templatesDir = path.join(__dirname, 'templates');
     const lensNodes = [
       { name: 'AXIOM.yaml', path: axiomPath },
       { name: 'ETHOS.yaml', path: ethosPath },
-      { name: 'MODUS.yaml', path: modusPath },
-      { name: 'README.md', path: readmePath }
+      { name: 'MODUS.yaml', path: modusPath }
     ];
 
     lensNodes.forEach(lensNode => {
       if (!fs.existsSync(lensNode.path)) {
-        fs.writeFileSync(lensNode.path, fs.readFileSync(path.join(templatesDir, lensNode.name), 'utf8'));
+        fs.copyFileSync(path.join(templatesDir, lensNode.name), lensNode.path);
       }
     });
+    writeFileIfChanged(readmePath, fs.readFileSync(path.join(templatesDir, 'README.md'), 'utf8'));
   } catch (e) {
     checkAccess(e);
     throw e;
   }
 
-  const linkedSkills = syncSkillLinks(reboot);
+  const linkedSkills = syncSkillLinks(reboot, openclawConfig);
   const antigravitySidecars = syncAntigravitySidecars(timezone, interviewExpr, distillationPrompt, interviewPrompt, reboot);
   const isInitialOnboarding = !reboot && scope.interview.phase === 'onboarding' && scope.interview.questions === 15;
 
@@ -469,33 +361,29 @@ export async function bootstrap(reboot = false) {
     skillDir: SKILL_DIR,
     linkedSkills,
     antigravitySidecars,
-    triggerImmediate: isInitialOnboarding ? "lens-interview" : null
+    triggerImmediate: isInitialOnboarding ? 'lens-interview' : null
   };
 
   if (reboot || isMain) {
-    console.log("BOOTSTRAP_LENS: RESULT_START");
+    console.log('BOOTSTRAP_LENS: RESULT_START');
     console.log(JSON.stringify(result, null, 2));
-    console.log("BOOTSTRAP_LENS: RESULT_END");
+    console.log('BOOTSTRAP_LENS: RESULT_END');
   }
+
+  return scope;
 }
 
-export async function preflight(job) {
+export function preflight(job) {
   const scopePath = path.join(LENS_DIR, 'SCOPE.json');
-
+  let scope = null;
   let needsReboot = !fs.existsSync(scopePath);
 
   if (!needsReboot) {
     try {
-      const scope = JSON.parse(fs.readFileSync(scopePath, 'utf8'));
+      scope = JSON.parse(fs.readFileSync(scopePath, 'utf8'));
+      const expectedInterviewExpr = getInterviewCronExpr(scope.interview?.phase);
 
-      let expectedInterviewExpr = "30 11,17 * * *";
-      if (scope.interview?.phase === 'stabilizing') {
-        expectedInterviewExpr = "30 11 * * *";
-      } else if (scope.interview?.phase === 'habitual') {
-        expectedInterviewExpr = "30 11 * * 3";
-      }
-
-      if (scope.meta?.version !== LENS_VERSION) {
+      if (scope.meta?.version !== LENS_VERSION || !Array.isArray(scope.distillation?.sources)) {
         needsReboot = true;
       } else if (process.env.OPENCLAW_CRON_LIST) {
         const parsed = JSON.parse(process.env.OPENCLAW_CRON_LIST);
@@ -529,7 +417,11 @@ export async function preflight(job) {
     }
   }
 
-  if (needsReboot) await bootstrap(true);
+  if (needsReboot) {
+    scope = bootstrap(true);
+  }
+
+  return { scope, rebooted: needsReboot };
 }
 
 if (isMain) bootstrap();

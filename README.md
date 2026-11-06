@@ -116,8 +116,9 @@ How nightly distillation (`0 3 * * *`) and calibration interviews (`30 11,17 * *
 
 ## Privacy & Security
 
-Because `~/.lens/` lives in your home directory outside the skill repository, you can version it as its own private Git repo (`git clone <your-private-lens-repo> ~/.lens` on a new machine) and upgrade or reinstall the skill without touching your personal data.
+Because `~/.lens/` lives in your home directory outside the skill repository, you can version it as its own private Git repo (`git clone <your-private-lens-repo> ~/.lens` on a new machine) and upgrade or reinstall the skill without touching your personal data. When `distillation.js --commit` snapshots updates to a Git-backed `~/.lens/`, only your distilled identity files (`AXIOM.yaml`, `ETHOS.yaml`, `MODUS.yaml`, `SCOPE.json`, `README.md`, `.gitignore`) are staged—the raw `TRACE.txt` buffer stays strictly local.
 
+* **Configurable source scoping:** `distillation.sources` in `~/.lens/SCOPE.json` (`["antigravity", "openclaw", "claude", "codex"]` by default) lets you control which local AI platforms `distillation.js` harvests from.
 * **Opt out any message with `#private`:** Any chat message containing `#private` is skipped entirely before `TRACE.txt` is written.
 * **Automatic secret scrubbing:** `distillation.js` strips URLs, API keys, private keys, passwords, SSNs, bank numbers, and IP addresses before a model ever reads `TRACE.txt`. Setting `"anonymize": true` in `~/.lens/SCOPE.json` also scrubs emails, phone numbers, street addresses, dates of birth, and social handles.
 * **Public draft redlines:** `resolve-protocol.md` blocks sensitive `AXIOM` data (biometrics, exact addresses, financial details, and medical context) from ever leaking into external or public-facing drafts.

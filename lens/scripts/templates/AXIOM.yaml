@@ -17,6 +17,7 @@ digital_identities_and_asset_inventory:
     - "[Pending Input] (e.g., Primary and household vehicles or transport)"
 
 biometrics_and_chronological_timeline:
+  name: "[Pending Input] (e.g., Full name, preferred first name, or common aliases)"
   age_and_generation: "[Pending Input] (e.g., Age, birth date)"
   timezone: "[Pending Input] (e.g., Local timezone)"
   circadian_rhythm: "[Pending Input] (e.g., Peak productivity hours, preferred notification window)"
