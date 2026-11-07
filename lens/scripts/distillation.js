@@ -1057,9 +1057,20 @@ function commitLensRepo() {
     }
     execFileSync('git', ['commit', '-m', commitMsg], { cwd: LENS_DIR, stdio: 'ignore' });
 
+    let shouldPush = false;
     try {
-      execFileSync('git', ['push'], { cwd: LENS_DIR, stdio: 'ignore' });
-    } catch (pushErr) {}
+      const scopePath = path.join(LENS_DIR, 'SCOPE.json');
+      if (fs.existsSync(scopePath)) {
+        const scope = JSON.parse(fs.readFileSync(scopePath, 'utf8'));
+        shouldPush = scope?.meta?.push === true;
+      }
+    } catch (scopeErr) {}
+
+    if (shouldPush) {
+      try {
+        execFileSync('git', ['push'], { cwd: LENS_DIR, stdio: 'ignore' });
+      } catch (pushErr) {}
+    }
   } catch (err) {
     checkAccess(err);
   }

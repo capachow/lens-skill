@@ -6,6 +6,7 @@ permissions:
   - filesystem
   - process
   - cron
+  - network
 metadata:
   {
     "openclaw": {
@@ -29,12 +30,12 @@ LENS models a singular human subject through **The Trinity Nodes** stored in `~/
 
 ## 1. Initialization & Schedule Sync (First Run)
 
-1. **Bootstrap `~/.lens/` & Skill Links:** If `~/.lens/` or any Trinity Node (`~/.lens/AXIOM.yaml`, `~/.lens/ETHOS.yaml`, `~/.lens/MODUS.yaml`) is missing, **or** if the OpenClaw `cron` tool is available and `lens-distillation` or `lens-interview` is missing from `OPENCLAW_CRON_LIST`, run `node` on [scripts/bootstrap.js](./scripts/bootstrap.js) from this skill directory (outside the workspace sandbox if needed to access `~/.lens/`).
+1. **Bootstrap `~/.lens/` & Skill Links:** If `~/.lens/` or any Trinity Node (`~/.lens/AXIOM.yaml`, `~/.lens/ETHOS.yaml`, `~/.lens/MODUS.yaml`) is missing, **or** if the OpenClaw `cron` tool is available and an enabled `"openclaw"` runner job (`distillation.runner` or `interview.runner` in `~/.lens/SCOPE.json`) is missing from `OPENCLAW_CRON_LIST`, run `node` on [scripts/bootstrap.js](./scripts/bootstrap.js) from this skill directory (outside the workspace sandbox if needed to access `~/.lens/`).
 2. **Sync Scheduled Jobs & Inform User:**
-   - **OpenClaw (`cron` tool available):** Whenever [scripts/bootstrap.js](./scripts/bootstrap.js), [scripts/distillation.js](./scripts/distillation.js), or [scripts/interview.js](./scripts/interview.js) outputs `BOOTSTRAP_LENS`, register or update both `lens-distillation` and `lens-interview` in the `cron` tool using the exact `jobs` payloads from stdout, and inform the user that recurring nightly transcript distillation (`0 3 * * *` across enabled `distillation.sources` in `~/.lens/SCOPE.json`) and calibration interviews have been scheduled.
-   - **Google Antigravity:** [scripts/bootstrap.js](./scripts/bootstrap.js) writes the `lens-distillation` and `lens-interview` automation definitions to `~/.gemini/config/sidecars/`. On initial setup, inform the user they can review and enable recurring nightly transcript distillation and calibration interviews in `[Open Automations Dashboard](sidecar://dashboard)`.
+   - **OpenClaw (`cron` tool available):** Whenever the bootstrap or preflight output includes `BOOTSTRAP_LENS`, register or update any job present in `jobs` (`lens-distillation` when `distillation.runner` is `"openclaw"`, `lens-interview` when `interview.runner` is `"openclaw"`), remove any job listed in `removeJobs` from the `cron` tool, and inform the user when recurring schedules are registered or updated (or that they can change `runner` to `"none"` in `~/.lens/SCOPE.json` to disable scheduling).
+   - **Google Antigravity:** When `distillation.runner` or `interview.runner` in `~/.lens/SCOPE.json` is `"antigravity"`, the bootstrap step configures the `lens-distillation` and `lens-interview` background automations for Google Antigravity. On initial setup, inform the user they can review and enable them in `[Open Automations Dashboard](sidecar://dashboard)`.
    - **Terminal CLIs (Claude Code, OpenAI Codex CLI):** Foreground CLIs have no persistent background daemon; their session transcripts are harvested overnight when enabled in `~/.lens/SCOPE.json` (`distillation.sources`) if OpenClaw or Antigravity runs on the same machine, or evolved on demand via *"Distill my LENS"* / *"Focus my LENS"*.
-3. **First-Run Calibration:** If `BOOTSTRAP_LENS` outputs `"triggerImmediate": "lens-interview"` (or if all three Trinity Nodes in `~/.lens/` contain only `[Pending Input]` placeholders on first activation), immediately run `node` on [scripts/interview.js](./scripts/interview.js) and execute [prompts/interview.md](./prompts/interview.md).
+3. **First-Run Calibration:** If `BOOTSTRAP_LENS` outputs `"triggerImmediate": "lens-interview"` (or if all three Trinity Nodes in `~/.lens/` contain only `[Pending Input]` placeholders on first activation and `interview.runner` is not `"none"`), immediately run `node` on [scripts/interview.js](./scripts/interview.js) and execute [prompts/interview.md](./prompts/interview.md).
 
 ## 2. Three-Pass Cognitive Pipeline (Using LENS)
 
@@ -59,6 +60,6 @@ When asked to think, evaluate, decide, write, or speak through the user's LENS, 
 
 ## 3. On-Demand Evolution Commands
 
-- **Direct Update (*"Add to my LENS..."*):** Surgically update the target key in `~/.lens/AXIOM.yaml`, `~/.lens/ETHOS.yaml`, or `~/.lens/MODUS.yaml` per [resolve-protocol.md](./references/resolve-protocol.md) and [trinity-definitions.md](./references/trinity-definitions.md), then run `node` on [scripts/distillation.js](./scripts/distillation.js) with `--commit` from this skill directory to snapshot changes if `~/.lens/` is a git repository.
+- **Direct Update (*"Add to my LENS..."*):** Surgically update the target key in `~/.lens/AXIOM.yaml`, `~/.lens/ETHOS.yaml`, or `~/.lens/MODUS.yaml` per [resolve-protocol.md](./references/resolve-protocol.md) and [trinity-definitions.md](./references/trinity-definitions.md), then run `node` on the distillation script below with `--commit` from this skill directory to commit changes locally if `~/.lens/` is a Git repository (pushing to the remote only when `"push": true` in `~/.lens/SCOPE.json`).
 - **Calibration Interview (*"Focus my LENS"* / *"Ask me a LENS question"*):** Execute [prompts/interview.md](./prompts/interview.md) to ask one scenario or trade-off question. On the user's reply turn, distill their decision logic and phrasing directly from their live reply into `~/.lens/AXIOM.yaml`, `~/.lens/ETHOS.yaml`, and `~/.lens/MODUS.yaml` per [prompts/distillation.md](./prompts/distillation.md) (skipping Step 0 `TRACE.txt` harvesting).
-- **Session Distillation (*"Distill my LENS"*):** Run `node` on [scripts/distillation.js](./scripts/distillation.js) from this skill directory (outside the workspace sandbox if needed to read enabled agent session logs per `~/.lens/SCOPE.json` and write `~/.lens/TRACE.txt`), then execute [prompts/distillation.md](./prompts/distillation.md).
+- **Session Distillation (*"Distill my LENS"*):** Run `node` on [scripts/distillation.js](./scripts/distillation.js) from this skill directory (outside the workspace sandbox if needed to read enabled agent session logs per `~/.lens/SCOPE.json` and populate `~/.lens/TRACE.txt`), then execute [prompts/distillation.md](./prompts/distillation.md).

@@ -5,7 +5,7 @@ Read `~/.lens/AXIOM.yaml`, `~/.lens/ETHOS.yaml`, `~/.lens/MODUS.yaml`, and `~/.l
 **PROTOCOL:**
 0. **Preflight & Schedule Sync:**
    - If the trigger message lacks `INTERVIEW_READY`, run `node` on [scripts/interview.js](../scripts/interview.js) from the skill directory (outside the workspace sandbox if needed to access `~/.lens/`) to decrement the question counter and sync `~/.lens/SCOPE.json`.
-   - If stdout contains `BOOTSTRAP_LENS` and the `cron` tool is available, register or update `lens-distillation` and `lens-interview` via the `cron` tool using the exact `jobs` payloads from stdout, and note in your response when recurring schedules are first registered or updated.
+   - If stdout contains `BOOTSTRAP_LENS` and the `cron` tool is available, register or update any job in `jobs`, remove any job listed in `removeJobs` via the `cron` tool, and note in your response when recurring schedules are first registered or updated.
 
 1. **Target Selection:** Identify an uncalibrated `[Pending Input]` placeholder or under-defined key in `~/.lens/AXIOM.yaml`, `~/.lens/ETHOS.yaml`, or `~/.lens/MODUS.yaml`.
 2. **Phase Targeting (`~/.lens/SCOPE.json` -> `interview.phase`):**

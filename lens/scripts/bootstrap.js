@@ -9,6 +9,7 @@ export const SKILL_DIR = path.resolve(__dirname, '..');
 export const HOME_DIR = process.env.HOME || os.homedir();
 export const LENS_DIR = path.join(HOME_DIR, '.lens');
 export const DEFAULT_SOURCES = ['antigravity', 'openclaw', 'claude', 'codex'];
+export const VALID_RUNNERS = ['antigravity', 'openclaw', 'claude', 'codex', 'none'];
 
 export function checkAccess(err) {
   if (err && (err.code === 'EPERM' || err.code === 'EACCES')) {
@@ -41,6 +42,41 @@ function getInterviewCronExpr(phase) {
   if (phase === 'stabilizing') return '30 11 * * *';
   if (phase === 'habitual') return '30 11 * * 3';
   return '30 11,17 * * *';
+}
+
+function detectDefaultRunner(openclawConfig = null) {
+  if (process.env.OPENCLAW_CRON_LIST || process.env.OPENCLAW_HOME) return 'openclaw';
+  if (process.env.ANTIGRAVITY_CLI_ALIAS || process.env.ANTIGRAVITY_AGENT) return 'antigravity';
+  if (openclawConfig || (HOME_DIR && fs.existsSync(path.join(HOME_DIR, '.openclaw')))) return 'openclaw';
+  if (
+    HOME_DIR &&
+    (fs.existsSync(path.join(HOME_DIR, '.gemini/config')) || fs.existsSync(path.join(HOME_DIR, '.gemini/antigravity')))
+  ) {
+    return 'antigravity';
+  }
+  if (process.env.CLAUDECODE || process.env.CLAUDE_CODE_ENTRYPOINT) return 'claude';
+  if (process.env.CODEX_SANDBOX || process.env.CODEX_THREAD_ID) return 'codex';
+  if (HOME_DIR && fs.existsSync(path.join(HOME_DIR, '.claude'))) return 'claude';
+  if (
+    (process.env.CODEX_HOME && fs.existsSync(process.env.CODEX_HOME)) ||
+    (HOME_DIR && fs.existsSync(path.join(HOME_DIR, '.codex')))
+  ) {
+    return 'codex';
+  }
+  return 'none';
+}
+
+function normalizeModel(model, priorVersion = '') {
+  if (typeof model !== 'string' || !model.trim()) return 'default';
+  const trimmed = model.trim();
+  if (priorVersion && !priorVersion.startsWith('2.') && trimmed === 'google/gemini-3.1-pro-preview') {
+    return 'default';
+  }
+  return trimmed;
+}
+
+function resolvePayloadModel(model) {
+  return !model || model === 'default' ? undefined : model;
 }
 
 function writeFileIfChanged(filePath, content) {
@@ -143,7 +179,7 @@ function syncSkillLinks(reboot = false, openclawConfig = null) {
   return linked;
 }
 
-function syncAntigravitySidecars(timezone, interviewExpr, distillationPrompt, interviewPrompt, reboot = false) {
+function syncAntigravitySidecars(timezone, interviewExpr, distillationPrompt, interviewPrompt, scope, reboot = false) {
   const synced = [];
   if (!HOME_DIR) return synced;
 
@@ -161,6 +197,7 @@ function syncAntigravitySidecars(timezone, interviewExpr, distillationPrompt, in
   const definitions = [
     {
       id: 'lens-distillation',
+      enabled: scope.distillation?.runner === 'antigravity',
       config: {
         builtin: 'schedule',
         args: [
@@ -188,6 +225,7 @@ function syncAntigravitySidecars(timezone, interviewExpr, distillationPrompt, in
     },
     {
       id: 'lens-interview',
+      enabled: scope.interview?.runner === 'antigravity',
       config: {
         builtin: 'schedule',
         args: [
@@ -220,9 +258,16 @@ function syncAntigravitySidecars(timezone, interviewExpr, distillationPrompt, in
     try {
       const dir = path.join(sidecarsRoot, def.id);
       const filePath = path.join(dir, 'sidecar.json');
-      fs.mkdirSync(dir, { recursive: true });
-      writeFileIfChanged(filePath, JSON.stringify(def.config, null, 2) + '\n');
-      synced.push(filePath);
+      if (def.enabled) {
+        fs.mkdirSync(dir, { recursive: true });
+        writeFileIfChanged(filePath, JSON.stringify(def.config, null, 2) + '\n');
+        synced.push(filePath);
+      } else if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        try {
+          fs.rmdirSync(dir);
+        } catch (rmErr) {}
+      }
     } catch (e) {
       if (!reboot) checkAccess(e);
     }
@@ -248,16 +293,24 @@ export function bootstrap(reboot = false) {
 
   const openclawConfig = readOpenClawConfig();
   const timezone = openclawConfig?.agents?.defaults?.userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const defaultRunner = detectDefaultRunner(openclawConfig);
 
   let scope = {
     meta: {
       version: LENS_VERSION,
       installed: new Date().toISOString().split('T')[0],
-      anonymize: false
+      anonymize: false,
+      push: false
     },
-    interview: { phase: 'onboarding', questions: 15, model: '' },
+    interview: {
+      phase: 'onboarding',
+      questions: 15,
+      runner: defaultRunner,
+      model: 'default'
+    },
     distillation: {
-      model: '',
+      runner: defaultRunner,
+      model: 'default',
       sources: [...DEFAULT_SOURCES]
     }
   };
@@ -266,17 +319,26 @@ export function bootstrap(reboot = false) {
     try {
       const existing = JSON.parse(fs.readFileSync(scopePath, 'utf8'));
       const priorVersion = String(existing.meta?.version || '');
-      scope.meta = { ...scope.meta, ...(existing.meta || {}) };
-      scope.interview = { ...scope.interview, ...(existing.interview || {}) };
-      scope.distillation = { ...scope.distillation, ...(existing.distillation || {}) };
-      if (!Array.isArray(scope.distillation.sources)) {
-        scope.distillation.sources = [...DEFAULT_SOURCES];
-      }
-      if (priorVersion && !priorVersion.startsWith('2.')) {
-        if (scope.interview.model === 'google/gemini-3.1-pro-preview') scope.interview.model = '';
-        if (scope.distillation.model === 'google/gemini-3.1-pro-preview') scope.distillation.model = '';
-      }
-      scope.meta.version = LENS_VERSION;
+      scope.meta = {
+        ...scope.meta,
+        ...(existing.meta || {}),
+        version: LENS_VERSION,
+        anonymize: Boolean(existing.meta?.anonymize),
+        push: typeof existing.meta?.push === 'boolean' ? existing.meta.push : false
+      };
+      scope.interview = {
+        ...scope.interview,
+        ...(existing.interview || {}),
+        runner: VALID_RUNNERS.includes(existing.interview?.runner) ? existing.interview.runner : defaultRunner,
+        model: normalizeModel(existing.interview?.model, priorVersion)
+      };
+      scope.distillation = {
+        ...scope.distillation,
+        ...(existing.distillation || {}),
+        runner: VALID_RUNNERS.includes(existing.distillation?.runner) ? existing.distillation.runner : defaultRunner,
+        model: normalizeModel(existing.distillation?.model, priorVersion),
+        sources: Array.isArray(existing.distillation?.sources) ? existing.distillation.sources : [...DEFAULT_SOURCES]
+      };
 
       if (typeof scope.interview.questions === 'number' && scope.interview.questions <= 0) {
         if (scope.interview.phase === 'onboarding') {
@@ -300,8 +362,11 @@ export function bootstrap(reboot = false) {
   const distillationPrompt = `Run \`node ${path.join(__dirname, 'distillation.js')}\`. If the output is 'TRACE_EMPTY', reply with ONLY: NO_REPLY and stop. If the output includes 'DISTILLATION_READY', read \`${path.join(SKILL_DIR, 'prompts/distillation.md')}\` and follow it strictly.`;
   const interviewPrompt = `Run \`node ${path.join(__dirname, 'interview.js')}\`. If the output includes 'INTERVIEW_READY', read \`${path.join(SKILL_DIR, 'prompts/interview.md')}\` and follow it strictly. Generate a single question for the human and stop.`;
 
-  const jobs = [
-    {
+  const jobs = [];
+  const removeJobs = [];
+
+  if (scope.distillation.runner === 'openclaw') {
+    jobs.push({
       id: 'lens-distillation',
       name: 'lens-distillation',
       schedule: { kind: 'cron', expr: '0 3 * * *', tz: timezone },
@@ -309,13 +374,18 @@ export function bootstrap(reboot = false) {
       payload: {
         kind: 'agentTurn',
         message: distillationPrompt,
-        model: scope.distillation.model || undefined
+        model: resolvePayloadModel(scope.distillation.model)
       },
       delivery: {
         mode: 'none'
       }
-    },
-    {
+    });
+  } else {
+    removeJobs.push('lens-distillation');
+  }
+
+  if (scope.interview.runner === 'openclaw') {
+    jobs.push({
       id: 'lens-interview',
       name: 'lens-interview',
       schedule: { kind: 'cron', expr: interviewExpr, tz: timezone },
@@ -323,10 +393,12 @@ export function bootstrap(reboot = false) {
       payload: {
         kind: 'systemEvent',
         text: interviewPrompt,
-        model: scope.interview.model || undefined
+        model: resolvePayloadModel(scope.interview.model)
       }
-    }
-  ];
+    });
+  } else {
+    removeJobs.push('lens-interview');
+  }
 
   try {
     writeFileIfChanged(scopePath, JSON.stringify(scope, null, 2) + '\n');
@@ -351,11 +423,12 @@ export function bootstrap(reboot = false) {
   }
 
   const linkedSkills = syncSkillLinks(reboot, openclawConfig);
-  const antigravitySidecars = syncAntigravitySidecars(timezone, interviewExpr, distillationPrompt, interviewPrompt, reboot);
-  const isInitialOnboarding = !reboot && scope.interview.phase === 'onboarding' && scope.interview.questions === 15;
+  const antigravitySidecars = syncAntigravitySidecars(timezone, interviewExpr, distillationPrompt, interviewPrompt, scope, reboot);
+  const isInitialOnboarding = !reboot && scope.interview.runner !== 'none' && scope.interview.phase === 'onboarding' && scope.interview.questions === 15;
 
   const result = {
     jobs,
+    removeJobs,
     timezone,
     lensDir: LENS_DIR,
     skillDir: SKILL_DIR,
@@ -383,26 +456,70 @@ export function preflight(job) {
       scope = JSON.parse(fs.readFileSync(scopePath, 'utf8'));
       const expectedInterviewExpr = getInterviewCronExpr(scope.interview?.phase);
 
-      if (scope.meta?.version !== LENS_VERSION || !Array.isArray(scope.distillation?.sources)) {
+      if (
+        scope.meta?.version !== LENS_VERSION ||
+        typeof scope.meta?.push !== 'boolean' ||
+        !VALID_RUNNERS.includes(scope.interview?.runner) ||
+        !VALID_RUNNERS.includes(scope.distillation?.runner) ||
+        typeof scope.interview?.model !== 'string' ||
+        !scope.interview.model.trim() ||
+        typeof scope.distillation?.model !== 'string' ||
+        !scope.distillation.model.trim() ||
+        !Array.isArray(scope.distillation?.sources)
+      ) {
         needsReboot = true;
-      } else if (process.env.OPENCLAW_CRON_LIST) {
-        const parsed = JSON.parse(process.env.OPENCLAW_CRON_LIST);
-        const crons = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.jobs) ? parsed.jobs : []);
-        const distillationCron = crons.find(j => j.name === 'lens-distillation');
-        const interviewCron = crons.find(j => j.name === 'lens-interview');
-        const distillationText = distillationCron?.payload?.message || distillationCron?.payload?.text || '';
-        const interviewText = interviewCron?.payload?.message || interviewCron?.payload?.text || '';
+      } else {
+        if (process.env.OPENCLAW_CRON_LIST) {
+          const parsed = JSON.parse(process.env.OPENCLAW_CRON_LIST);
+          const crons = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.jobs) ? parsed.jobs : []);
+          const distillationCron = crons.find(j => j.name === 'lens-distillation');
+          const interviewCron = crons.find(j => j.name === 'lens-interview');
 
-        if (
-          !distillationCron ||
-          !interviewCron ||
-          !distillationText.includes(path.join(__dirname, 'distillation.js')) ||
-          !interviewText.includes(path.join(__dirname, 'interview.js')) ||
-          interviewCron.schedule?.expr !== expectedInterviewExpr ||
-          (scope.distillation?.model || '') !== (distillationCron.payload?.model || '') ||
-          (scope.interview?.model || '') !== (interviewCron.payload?.model || '')
-        ) {
-          needsReboot = true;
+          if (scope.distillation.runner === 'openclaw') {
+            const distillationText = distillationCron?.payload?.message || distillationCron?.payload?.text || '';
+            const expectedDistModel = resolvePayloadModel(scope.distillation.model) || '';
+            if (
+              !distillationCron ||
+              !distillationText.includes(path.join(__dirname, 'distillation.js')) ||
+              expectedDistModel !== (distillationCron.payload?.model || '')
+            ) {
+              needsReboot = true;
+            }
+          } else if (distillationCron) {
+            needsReboot = true;
+          }
+
+          if (scope.interview.runner === 'openclaw') {
+            const interviewText = interviewCron?.payload?.message || interviewCron?.payload?.text || '';
+            const expectedIntModel = resolvePayloadModel(scope.interview.model) || '';
+            if (
+              !interviewCron ||
+              !interviewText.includes(path.join(__dirname, 'interview.js')) ||
+              interviewCron.schedule?.expr !== expectedInterviewExpr ||
+              expectedIntModel !== (interviewCron.payload?.model || '')
+            ) {
+              needsReboot = true;
+            }
+          } else if (interviewCron) {
+            needsReboot = true;
+          }
+        }
+
+        if (!needsReboot && HOME_DIR) {
+          const agyConfigDir = path.join(HOME_DIR, '.gemini', 'config');
+          const agyDir = path.join(HOME_DIR, '.gemini', 'antigravity');
+          if (fs.existsSync(agyConfigDir) || fs.existsSync(agyDir)) {
+            const distSidecar = path.join(agyConfigDir, 'sidecars', 'lens-distillation', 'sidecar.json');
+            const intSidecar = path.join(agyConfigDir, 'sidecars', 'lens-interview', 'sidecar.json');
+            const hasDistSidecar = fs.existsSync(distSidecar);
+            const hasIntSidecar = fs.existsSync(intSidecar);
+            if (
+              hasDistSidecar !== (scope.distillation.runner === 'antigravity') ||
+              hasIntSidecar !== (scope.interview.runner === 'antigravity')
+            ) {
+              needsReboot = true;
+            }
+          }
         }
       }
 

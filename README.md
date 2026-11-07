@@ -78,7 +78,7 @@ Behind the scenes, `scripts/distillation.js` acts as a zero-token preflight harv
 
 When new messages exist, `prompts/distillation.md` filters out assistant replies, pasted logs, rapid bot commands (*"run the build"*), and one-off project tasks. Only signals that would still hold true if you switched projects tomorrow make it into your YAML nodes.
 
-To fill in blind spots that normal work sessions do not surface, `prompts/interview.md` runs a lightweight calibration loop across **onboarding** (15 questions), **stabilizing** (22 questions), and **habitual** phases using quick, concrete trade-off questions instead of abstract personality quizzes. By default, `"model": ""` in `~/.lens/SCOPE.json` lets each platform run distillation and interviews with its own active default model, or you can pin a specific model string to override it.
+To fill in blind spots that normal work sessions do not surface, `prompts/interview.md` runs a lightweight calibration loop across **onboarding** (15 questions), **stabilizing** (22 questions), and **habitual** phases using quick, concrete trade-off questions instead of abstract personality quizzes. By default, `"model": "default"` in `~/.lens/SCOPE.json` lets each platform run distillation and interviews with its own active default model, or you can pin a specific model string to override it.
 
 ## Installation & Onboarding
 
@@ -93,15 +93,15 @@ Running `bootstrap.js` handles the local setup automatically:
    * **OpenClaw:** `<workspace>/skills/lens` (via `~/.openclaw/openclaw.json`, or install via [ClawHub](https://clawhub.ai/capachow/lens))
    * **Claude Code:** `~/.claude/skills/lens`
    * **OpenAI Codex CLI:** `~/.codex/skills/lens` (or `$CODEX_HOME/skills/lens`)
-3. Pre-configures the Google Antigravity background sidecars (`~/.gemini/config/sidecars/lens-distillation/sidecar.json` and `lens-interview/sidecar.json`) when Antigravity is present.
+3. Auto-detects the default schedule `runner` for `interview.runner` and `distillation.runner` in `~/.lens/SCOPE.json` (`"openclaw"`, `"antigravity"`, `"claude"`, `"codex"`, or `"none"`) so only one platform runs background schedules even when multiple tools are installed.
 
 ### 2. Background Scheduling by Platform
 
-How nightly distillation (`0 3 * * *`) and calibration interviews (`30 11,17 * * *` $\rightarrow$ `30 11 * * *` $\rightarrow$ `30 11 * * 3`) run depends on your host environment:
+How nightly distillation (`0 3 * * *`) and calibration interviews (`30 11,17 * * *` $\rightarrow$ `30 11 * * *` $\rightarrow$ `30 11 * * 3`) run is controlled by `distillation.runner` and `interview.runner` in `~/.lens/SCOPE.json` (set either to `"none"` to disable its schedule):
 
-* **OpenClaw:** Runs a persistent daemon with a native `cron` tool. On your first LENS interaction (or whenever preflight spots missing schedules in `OPENCLAW_CRON_LIST`), the agent registers `lens-distillation` and `lens-interview` automatically and asks your first calibration question.
-* **Google Antigravity:** `bootstrap.js` writes the **"LENS Nightly Distillation"** and **"LENS Calibration Interview"** definitions to `~/.gemini/config/sidecars/` with scoped permissions for `~/.lens/`. Open the **Automations Dashboard** (`sidecar://dashboard`) to toggle them on.
-* **Claude Code & OpenAI Codex CLI:** Terminal CLIs only run while a session is open and have no background daemon, so you have three ways to evolve `~/.lens/`:
+* **OpenClaw (`"runner": "openclaw"`):** Runs a persistent daemon with a native `cron` tool. On your first LENS interaction (or whenever preflight spots missing schedules in `OPENCLAW_CRON_LIST`), the agent registers `lens-distillation` and `lens-interview` automatically and asks your first calibration question.
+* **Google Antigravity (`"runner": "antigravity"`):** `bootstrap.js` writes the **"LENS Nightly Distillation"** and **"LENS Calibration Interview"** definitions to `~/.gemini/config/sidecars/` with scoped permissions for `~/.lens/`. Open the **Automations Dashboard** (`sidecar://dashboard`) to toggle them on.
+* **Claude Code & OpenAI Codex CLI (`"runner": "claude"` or `"codex"`):** Terminal CLIs only run while a session is open and have no background daemon, so you have three ways to evolve `~/.lens/`:
   1. **Shared harvesting (automatic):** If you also run OpenClaw or Antigravity on the same machine, their overnight jobs automatically harvest your CLI sessions too.
   2. **On demand in chat:** Say *"Distill my LENS"* or *"Focus my LENS"* during any CLI session.
   3. **System `crontab` (optional):** If you only use a terminal CLI and want unattended 3:00 AM distillation, add the preflight check to `crontab -e` so a model only runs when `distillation.js` outputs `DISTILLATION_READY`:
@@ -116,7 +116,7 @@ How nightly distillation (`0 3 * * *`) and calibration interviews (`30 11,17 * *
 
 ## Privacy & Security
 
-Because `~/.lens/` lives in your home directory outside the skill repository, you can version it as its own private Git repo (`git clone <your-private-lens-repo> ~/.lens` on a new machine) and upgrade or reinstall the skill without touching your personal data. When `distillation.js --commit` snapshots updates to a Git-backed `~/.lens/`, only your distilled identity files (`AXIOM.yaml`, `ETHOS.yaml`, `MODUS.yaml`, `SCOPE.json`, `README.md`, `.gitignore`) are staged—the raw `TRACE.txt` buffer stays strictly local.
+Because `~/.lens/` lives in your home directory outside the skill repository, you can version it as its own private Git repo (`git clone <your-private-lens-repo> ~/.lens` on a new machine) and upgrade or reinstall the skill without touching your personal data. When `distillation.js --commit` snapshots updates to a Git-backed `~/.lens/`, only your distilled identity files (`AXIOM.yaml`, `ETHOS.yaml`, `MODUS.yaml`, `SCOPE.json`, `README.md`, `.gitignore`) are committed locally—the raw `TRACE.txt` buffer stays strictly local, and outbound `git push` only runs if you explicitly set `"push": true` in `~/.lens/SCOPE.json`.
 
 * **Configurable source scoping:** `distillation.sources` in `~/.lens/SCOPE.json` (`["antigravity", "openclaw", "claude", "codex"]` by default) lets you control which local AI platforms `distillation.js` harvests from.
 * **Opt out any message with `#private`:** Any chat message containing `#private` is skipped entirely before `TRACE.txt` is written.
